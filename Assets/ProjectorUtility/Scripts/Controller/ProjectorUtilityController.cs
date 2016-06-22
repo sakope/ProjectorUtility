@@ -49,10 +49,10 @@ namespace ProjectorUtility.Controller
         #region API
 
         /// <summary>
-        /// Total blend width.
+        /// Normalized total blend width.
         /// </summary>
-        /// <returns>Return total blend width</returns>
-        public float GetTotalBlendWidth()
+        /// <returns>Return normalized total blend width</returns>
+        public float NormalizedBlendWidth()
         {
             float tbw = 0f;
             _screenSettingEntities.ForEach(e => tbw += e.LeftBlend.Value + e.RightBlend.Value);
@@ -60,14 +60,101 @@ namespace ProjectorUtility.Controller
         }
 
         /// <summary>
-        /// Total blend height. 
+        /// normalized total blend height. 
         /// </summary>
-        /// <returns>Return total blend height</returns>
-        public float GetTotalBlendHeight()
+        /// <returns>Return normalized total blend height</returns>
+        public float NormalizedBlendHeight()
         {
             float tbh = 0f;
             _screenSettingEntities.ForEach(e => tbh += e.TopBlend.Value + e.BottomBlend.Value);
             return tbh;
+        }
+
+        /// <summary>
+        /// Total screen blending width.
+        /// </summary>
+        /// <returns>Return total screen blending width</returns>
+        public float BlendingHeight()
+        {
+            return NormalizedBlendHeight() * Screen.width;
+        }
+
+        /// <summary>
+        /// Total screen blend height.
+        /// </summary>
+        /// <returns>Return total screen blending height</returns>
+        public float BlendingWidth()
+        {
+            return NormalizedBlendWidth() * Screen.height;
+        }
+
+        /// <summary>
+        /// Return adjusted viewport position for blend and uv shift. 
+        /// </summary>
+        /// <param name="position">Viewport position</param>
+        /// <returns>Adjusted viewport position</returns>
+        public Vector2 GetAdjustedPosition(Vector2 position)
+        {
+            if(NumOfScreen == 1)
+            {
+                return position;
+            }
+
+            // Inverse y to match shader uv coord.
+            Vector2 adjustPosition = new Vector2(position.x, 1f - position.y);
+
+            int   colProjectors         = _commonSettingEntity.NumOfColProjectors.Value;
+            int   rowProjectors         = _commonSettingEntity.NumOfRowProjectors.Value;
+            int   currentCol            = Mathf.FloorToInt(adjustPosition.x / (1.0f / colProjectors));
+            int   currentRow            = Mathf.FloorToInt(adjustPosition.y / (1.0f / rowProjectors));
+            int   screenID              = currentCol + currentRow * colProjectors;
+
+            int leftOverlapCount  = Mathf.CeilToInt(colProjectors / 2) - currentCol;
+            int rightOverlapCount = currentCol + 1 - Mathf.FloorToInt(colProjectors / 2);
+            int upperOverlapCount = Mathf.CeilToInt(rowProjectors / 2) - currentRow;
+            int lowerOverlapCount = currentRow + 1 - Mathf.FloorToInt(rowProjectors / 2);
+
+            if (leftOverlapCount > 0)
+            {
+                for (int i = 0; i < leftOverlapCount; i++)
+                {
+                    //if it's not edge.
+                    if (i > 0) adjustPosition.x += _screenSettingEntities[screenID + i].LeftBlend.Value;
+                    //if it's not center.
+                    if (colProjectors % 2 == 0 || i + 1 != leftOverlapCount) adjustPosition.x += _screenSettingEntities[screenID + i].RightBlend.Value;
+                }
+            }
+            if (rightOverlapCount > 0)
+            {
+                for (int i = 0; i < rightOverlapCount; i++)
+                {
+                    if (i > 0) adjustPosition.x -= _screenSettingEntities[screenID - i].RightBlend.Value;
+                    if (colProjectors % 2 == 0 || i + 1 != rightOverlapCount) adjustPosition.x -= _screenSettingEntities[screenID - i].LeftBlend.Value;
+                }
+            }
+            if (upperOverlapCount > 0)
+            {
+                for (int i = 0; i < upperOverlapCount; i++)
+                {
+                    if (i > 0) adjustPosition.y += _screenSettingEntities[screenID + i * colProjectors].TopBlend.Value;
+                    if (rowProjectors % 2 == 0 || i + 1 != upperOverlapCount) adjustPosition.y += _screenSettingEntities[screenID + i * colProjectors].BottomBlend.Value;
+                }
+            }
+            if (lowerOverlapCount > 0)
+            {
+                for (int i = 0; i < lowerOverlapCount; i++)
+                {
+                    if (i > 0) adjustPosition.y -= _screenSettingEntities[screenID - i * colProjectors].BottomBlend.Value;
+                    if (rowProjectors % 2 == 0 || i + 1 != lowerOverlapCount) adjustPosition.y -= _screenSettingEntities[screenID - i * colProjectors].TopBlend.Value;
+                }
+            }
+
+            adjustPosition += _screenSettingEntities[screenID].uvShift.Value;
+
+            //inverse y to match viewport coord.
+            adjustPosition = new Vector2(adjustPosition.x, 1 - adjustPosition.y);
+
+            return adjustPosition;
         }
 
         #endregion
