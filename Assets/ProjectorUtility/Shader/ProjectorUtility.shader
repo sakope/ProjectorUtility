@@ -45,10 +45,10 @@
         fixed vrtclLen = 1.0 / (float)_numOfRowPrjctrs;
         
         //// uv shift for overlap region. ////
-        int leftOLCount  = (int)ceil(_numOfColPrjctrs / 2) - (int)colID;
-        int rightOLCount = (int)colID + 1 - (int)floor(_numOfColPrjctrs / 2);
-        int upperOLCount = (int)ceil(_numOfRowPrjctrs / 2) - (int)rowID;
-        int lowerOLCount = (int)rowID + 1 - (int)floor(_numOfRowPrjctrs / 2);
+        int leftOLCount  = (int)floor(_numOfColPrjctrs / 2.0) - (int)colID;
+        int rightOLCount = (int)colID + 1 - (int)ceil(_numOfColPrjctrs / 2.0);
+        int upperOLCount = (int)floor(_numOfRowPrjctrs / 2.0) - (int)rowID;
+        int lowerOLCount = (int)rowID + 1 - (int)ceil(_numOfRowPrjctrs / 2.0);
         //even is 1, odd is 0.
         fixed isEvenCol = 1 - _numOfColPrjctrs % 2;
         fixed isEvenRow = 1 - _numOfRowPrjctrs % 2;
@@ -56,31 +56,27 @@
         for (int i = 0; i < leftOLCount; i++)
         {
             //if proxies (for performance)
-            fixed ifEdge = step(0.1, i);
-            fixed ifCenter = step((float)i, (float)_numOfColPrjctrs / 2 - (float)colID - 0.6 + isEvenCol);
+			fixed ifCenterEven = step(0.001, (float)_numOfColPrjctrs / 2.0 - (float)colID - i - isEvenCol);
             //add every left overlap width from center
-            vf.uv.x += buf[SID + i].overlapLeft * ifEdge + buf[SID + i].overlapRight * ifCenter;
+            vf.uv.x += buf[SID + i + 1].overlapLeft * ifCenterEven + buf[SID + i].overlapRight;
         }
         for (int j = 0; j < rightOLCount; j++)
         {
-            fixed ifEdge = step(0.1, j);
-            fixed ifCenter = step((float)j, colID - _numOfColPrjctrs / 2 + isEvenCol);
+			fixed ifCenterEven = step(0.001, (float)_numOfColPrjctrs / 2.0 - ((float)_numOfColPrjctrs - (float)colID - 1) - j - isEvenCol);
             //add every right overlap width from center
-            vf.uv.x -= buf[SID - j].overlapRight * ifEdge + buf[SID - j].overlapLeft * ifCenter;
+            vf.uv.x -= buf[SID - j - 1].overlapRight * ifCenterEven + buf[SID - j].overlapLeft;
         }
         for (int k = 0; k < upperOLCount; k++)
         {
-            fixed ifEdge = step(0.1, k);
-            fixed ifCenter = step((float)k, (float)_numOfRowPrjctrs / 2 - (float)rowID - 0.6 + isEvenRow);
+			fixed ifCenterEven = step(0.001, (float)_numOfRowPrjctrs / 2.0 - (float)rowID - k - isEvenRow);
             //add every lower overlap width from center
-            vf.uv.y += buf[SID + k * _numOfColPrjctrs].overlapTop * ifEdge + buf[SID + k * _numOfColPrjctrs].overlapBottom * ifCenter;
+            vf.uv.y += buf[SID + (k + 1) * _numOfColPrjctrs].overlapTop * ifCenterEven + buf[SID + k * _numOfColPrjctrs].overlapBottom;
         }
         for (int m = 0; m < lowerOLCount; m++)
         {
-            fixed ifEdge = step(0.1, m);
-            fixed ifCenter = step((float)m, rowID - _numOfRowPrjctrs / 2 + isEvenRow);
+			fixed ifCenterEven = step(0.001, (float)_numOfRowPrjctrs / 2.0 - ((float)_numOfRowPrjctrs - (float)rowID - 1) - m - isEvenRow);
             //add every upper overlap width from center
-            vf.uv.y -= buf[SID - m * _numOfColPrjctrs].overlapBottom * ifEdge + buf[SID - m * _numOfColPrjctrs].overlapTop * ifCenter;
+            vf.uv.y -= buf[SID - (m + 1) * _numOfColPrjctrs].overlapBottom * ifCenterEven + buf[SID - m * _numOfColPrjctrs].overlapTop;
         }
 
         //// custom uv shift region. ////
