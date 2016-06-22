@@ -109,43 +109,53 @@ namespace ProjectorUtility.Controller
             int   currentRow            = Mathf.FloorToInt(adjustPosition.y / (1.0f / rowProjectors));
             int   screenID              = currentCol + currentRow * colProjectors;
 
-            int leftOverlapCount  = Mathf.CeilToInt(colProjectors / 2) - currentCol;
-            int rightOverlapCount = currentCol + 1 - Mathf.FloorToInt(colProjectors / 2);
-            int upperOverlapCount = Mathf.CeilToInt(rowProjectors / 2) - currentRow;
-            int lowerOverlapCount = currentRow + 1 - Mathf.FloorToInt(rowProjectors / 2);
+            int leftOverlapCount  = Mathf.FloorToInt((float)colProjectors / 2f) - currentCol;
+            int rightOverlapCount = currentCol + 1 - Mathf.CeilToInt((float)colProjectors / 2f);
+            int upperOverlapCount = Mathf.FloorToInt((float)rowProjectors / 2f) - currentRow;
+            int lowerOverlapCount = currentRow + 1 - Mathf.CeilToInt((float)rowProjectors / 2f);
 
             if (leftOverlapCount > 0)
             {
                 for (int i = 0; i < leftOverlapCount; i++)
                 {
-                    //if it's not edge.
-                    if (i > 0) adjustPosition.x += _screenSettingEntities[screenID + i].LeftBlend.Value;
-                    //if it's not center.
-                    if (colProjectors % 2 == 0 || i + 1 != leftOverlapCount) adjustPosition.x += _screenSettingEntities[screenID + i].RightBlend.Value;
+                    if (colProjectors % 2 != 0 || colProjectors / 2 != currentCol + 1 + i)
+                    {
+                        adjustPosition.x += _screenSettingEntities[screenID + i + 1].LeftBlend.Value;
+                    }
+                    adjustPosition.x += _screenSettingEntities[screenID + i].RightBlend.Value;
                 }
             }
             if (rightOverlapCount > 0)
             {
                 for (int i = 0; i < rightOverlapCount; i++)
                 {
-                    if (i > 0) adjustPosition.x -= _screenSettingEntities[screenID - i].RightBlend.Value;
-                    if (colProjectors % 2 == 0 || i + 1 != rightOverlapCount) adjustPosition.x -= _screenSettingEntities[screenID - i].LeftBlend.Value;
+                    if (colProjectors % 2 != 0 || colProjectors / 2 != colProjectors - currentCol + i)
+                    {
+                        adjustPosition.x -= _screenSettingEntities[screenID - i - 1].RightBlend.Value;
+                    }
+                    adjustPosition.x -= _screenSettingEntities[screenID - i].LeftBlend.Value;
                 }
             }
             if (upperOverlapCount > 0)
             {
                 for (int i = 0; i < upperOverlapCount; i++)
                 {
-                    if (i > 0) adjustPosition.y += _screenSettingEntities[screenID + i * colProjectors].TopBlend.Value;
-                    if (rowProjectors % 2 == 0 || i + 1 != upperOverlapCount) adjustPosition.y += _screenSettingEntities[screenID + i * colProjectors].BottomBlend.Value;
+                    if (rowProjectors % 2 != 0 || rowProjectors / 2 != currentRow + 1 + i)
+                    {
+                        adjustPosition.y += _screenSettingEntities[screenID + (i + 1) * colProjectors].TopBlend.Value;
+                    }
+                    adjustPosition.y += _screenSettingEntities[screenID + i * colProjectors].BottomBlend.Value;
                 }
             }
             if (lowerOverlapCount > 0)
             {
                 for (int i = 0; i < lowerOverlapCount; i++)
                 {
-                    if (i > 0) adjustPosition.y -= _screenSettingEntities[screenID - i * colProjectors].BottomBlend.Value;
-                    if (rowProjectors % 2 == 0 || i + 1 != lowerOverlapCount) adjustPosition.y -= _screenSettingEntities[screenID - i * colProjectors].TopBlend.Value;
+                    if(rowProjectors % 2 != 0 || rowProjectors / 2 != rowProjectors - currentRow + i)
+                    {
+                        adjustPosition.y -= _screenSettingEntities[screenID - (i + 1) * colProjectors].BottomBlend.Value;
+                    }
+                    adjustPosition.y -= _screenSettingEntities[screenID - i * colProjectors].TopBlend.Value;
                 }
             }
 
