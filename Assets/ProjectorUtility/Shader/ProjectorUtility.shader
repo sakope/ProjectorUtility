@@ -123,6 +123,7 @@
         pass {
             CGPROGRAM
             #pragma fragmentoption ARB_precision_hint_fastest
+            #pragma target 5.0
             #pragma vertex vert_img
             #pragma fragment frag
             ENDCG
