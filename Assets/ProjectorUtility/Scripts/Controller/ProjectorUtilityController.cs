@@ -76,7 +76,7 @@ namespace ProjectorUtility.Controller
         /// <returns>Return total screen blending width</returns>
         public float BlendingHeight()
         {
-            return NormalizedBlendHeight() * Screen.width;
+            return NormalizedBlendHeight() * Screen.height;
         }
 
         /// <summary>
@@ -85,7 +85,7 @@ namespace ProjectorUtility.Controller
         /// <returns>Return total screen blending height</returns>
         public float BlendingWidth()
         {
-            return NormalizedBlendWidth() * Screen.height;
+            return NormalizedBlendWidth() * Screen.width;
         }
 
         /// <summary>
@@ -108,6 +108,11 @@ namespace ProjectorUtility.Controller
             int   currentCol            = Mathf.FloorToInt(adjustPosition.x / (1.0f / colProjectors));
             int   currentRow            = Mathf.FloorToInt(adjustPosition.y / (1.0f / rowProjectors));
             int   screenID              = currentCol + currentRow * colProjectors;
+
+            if (screenID >= colProjectors * rowProjectors)
+            {
+                return Vector2.one;
+            }
 
             int leftOverlapCount  = Mathf.FloorToInt((float)colProjectors / 2f) - currentCol;
             int rightOverlapCount = currentCol + 1 - Mathf.CeilToInt((float)colProjectors / 2f);

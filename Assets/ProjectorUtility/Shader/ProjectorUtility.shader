@@ -83,15 +83,10 @@
         vf.uv += float2(buf[SID].uvShiftX, buf[SID].uvShiftY);
 
         //// overlap gradient region. ////
-        // if flag proxies for performance.
-        fixed isZeroOLL = step(0.99999, 1-buf[SID].overlapLeft);
-        fixed isZeroOLR = step(0.99999, 1-buf[SID].overlapRight);
-        fixed isZeroOLT = step(0.99999, 1-buf[SID].overlapTop);
-        fixed isZeroOLB = step(0.99999, 1-buf[SID].overlapBottom);
-        col *= saturate((coord.x - (float)colID / (float)_numOfColPrjctrs) / buf[SID].overlapLeft + isZeroOLL);
-        col *= saturate(abs(float(colID + 1) / (float)_numOfColPrjctrs - coord.x) / buf[SID].overlapRight + isZeroOLR);
-        col *= saturate((coord.y - (float)rowID / (float)_numOfRowPrjctrs) / buf[SID].overlapTop + isZeroOLT);
-        col *= saturate(abs(float(rowID + 1) / (float)_numOfRowPrjctrs - coord.y) / buf[SID].overlapBottom + isZeroOLB);
+        col *= saturate((coord.x - (float)colID / (float)_numOfColPrjctrs) / buf[SID].overlapLeft);
+        col *= saturate(abs(((float)colID + 1.0) / (float)_numOfColPrjctrs - coord.x) / buf[SID].overlapRight);
+        col *= saturate((coord.y - rowID / (float)_numOfRowPrjctrs) / buf[SID].overlapTop);
+        col *= saturate(abs(((float)rowID + 1.0) / (float)_numOfRowPrjctrs - coord.y) / buf[SID].overlapBottom);
 
         //// overlap color tuning region. ////
         col = saturate(1.0 - (1.0 - col) * _blackness);
