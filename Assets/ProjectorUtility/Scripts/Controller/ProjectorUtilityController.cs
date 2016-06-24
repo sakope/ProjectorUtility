@@ -35,6 +35,7 @@ namespace ProjectorUtility.Controller
         List<ScreenSettingEntity> _screenSettingEntities = new List<ScreenSettingEntity>();
         List<ScreenSettingView>   _screenSettingViews    = new List<ScreenSettingView>();
         List<TabContentsSet> _tabs = new List<TabContentsSet>();
+        int _colScreens, _rowScreens;
 
         const int MAX_COL = 30;
         const int MAX_ROW = 30;
@@ -42,6 +43,11 @@ namespace ProjectorUtility.Controller
         public int NumOfScreen { get; private set; }
         public CommonSettingEntity GetCommonSettingEntity { get { return _commonSettingEntity; } }
         public List<ScreenSettingEntity> GetScreenSettingEntities { get { return _screenSettingEntities; } }
+
+        public float NormalizedMinUpperBlendHeight { get; private set; }
+        public float NormalizedMinLowerBlendHeight { get; private set; }
+        public float NormalizedMinLeftBlendWidth   { get; private set; }
+        public float NormalizedMinRightBlendWidth  { get; private set; }
 
         #endregion
 
@@ -88,6 +94,42 @@ namespace ProjectorUtility.Controller
             return NormalizedBlendWidth() * Screen.width;
         }
 
+        /// <summary>
+        /// Narrowest upper blend height in screen space coord.
+        /// </summary>
+        /// <returns>Narrowest upper blend height</returns>
+        public float MinUpperBlendHeight()
+        {
+            return NormalizedMinUpperBlendHeight * Screen.height;
+        }
+
+        /// <summary>
+        /// Narrowest lower blend height in screen space coord.
+        /// </summary>
+        /// <returns>Narrowest lower blend height</returns>
+        public float MinLowerBlendHeight()
+        {
+            return NormalizedMinLowerBlendHeight * Screen.height;
+        }
+
+        /// <summary>
+        /// Narrowest left blend width in screen space coord.
+        /// </summary>
+        /// <returns>Narrowest left blend width</returns>
+        public float MinLeftBlendWidth()
+        {
+            return NormalizedMinLeftBlendWidth * Screen.width;
+        }
+
+        /// <summary>
+        /// Narrowest right blend width in screen space coord.
+        /// </summary>
+        /// <returns>Narrowest right blend width</returns>
+        public float MinRightBlendWidth()
+        {
+            return NormalizedMinRightBlendWidth * Screen.width;
+        }
+        
         /// <summary>
         /// Return adjusted viewport position for blend and uv shift. 
         /// </summary>
@@ -192,6 +234,11 @@ namespace ProjectorUtility.Controller
             BuildCommonSetting();
             BuildScreenSetting();
             SetTabSystem();
+
+            NormalizedMinUpperBlendHeight = 0f;
+            NormalizedMinLowerBlendHeight = 0f;
+            NormalizedMinLeftBlendWidth   = 0f;
+            NormalizedMinRightBlendWidth  = 0f;
         }
 
         #endregion
@@ -237,7 +284,9 @@ namespace ProjectorUtility.Controller
             if (_commonSettingEntity.NumOfColProjectors.Value < 1) _commonSettingEntity.NumOfColProjectors.Value = 1;
             if (_commonSettingEntity.NumOfRowProjectors.Value < 1) _commonSettingEntity.NumOfRowProjectors.Value = 1;
 
-            NumOfScreen = _commonSettingEntity.NumOfColProjectors.Value * _commonSettingEntity.NumOfRowProjectors.Value;
+            _colScreens = _commonSettingEntity.NumOfColProjectors.Value;
+            _rowScreens = _commonSettingEntity.NumOfRowProjectors.Value;
+            NumOfScreen = _colScreens * _rowScreens;
 
             if(NumOfScreen > _screenSettingEntities.Count)
             {
@@ -259,7 +308,7 @@ namespace ProjectorUtility.Controller
                     ScreenSettingView   screenSettingView   = tabContentsSet.contents.GetComponent<ScreenSettingView>();
                     ScreenSettingEntity screenSettingEntity = new ScreenSettingEntity(i);
 
-                    //From model to view reactives
+                    //From model to other reactives (with initialize)
                     screenSettingEntity.TopBlend.Subscribe(v => screenSettingView.topBlendUI.SetVal(v));
                     screenSettingEntity.BottomBlend.Subscribe(v => screenSettingView.bottomBlendUI.SetVal(v));
                     screenSettingEntity.LeftBlend.Subscribe(v => screenSettingView.leftBlendUI.SetVal(v));
@@ -274,7 +323,7 @@ namespace ProjectorUtility.Controller
                     screenSettingEntity.bottomRightMask.Subscribe(v => { screenSettingView.bottomRightMaskXUI.SetVal(v.x); screenSettingView.bottomRightMaskYUI.SetVal(v.y); });
                     screenSettingEntity.uvShift.Subscribe(v => { screenSettingView.uvShiftX.SetVal(v.x); screenSettingView.uvShiftY.SetVal(v.y); });
 
-                    //From model to core reactives (skip initialize)
+                    //From model to other reactives (skip initialize)
                     if (i == 0)
                     {
                         screenSettingEntity.TopBlend.SkipLatestValueOnSubscribe().Subscribe(v => UpdateBlendMaster());
@@ -348,6 +397,30 @@ namespace ProjectorUtility.Controller
             UpdateBlend();
         }
 
+        void CalculateNarrowestBlend()
+        {
+            NormalizedMinLeftBlendWidth = NormalizedMinRightBlendWidth = NormalizedMinUpperBlendHeight = NormalizedMinLowerBlendHeight = 1;
+            for (int i = 0; i < NumOfScreen; i++)
+            {
+                if (i % _colScreens == 0)
+                {
+                    if (NormalizedMinLeftBlendWidth >= _screenSettingEntities[i].LeftBlend.Value) NormalizedMinLeftBlendWidth = _screenSettingEntities[i].LeftBlend.Value;
+                }
+                if ((i + 1) % _colScreens == 0)
+                {
+                    if (NormalizedMinRightBlendWidth >= _screenSettingEntities[i].RightBlend.Value) NormalizedMinRightBlendWidth = _screenSettingEntities[i].RightBlend.Value;
+                }
+                if (i < _colScreens)
+                {
+                    if (NormalizedMinUpperBlendHeight >= _screenSettingEntities[i].TopBlend.Value) NormalizedMinUpperBlendHeight = _screenSettingEntities[i].TopBlend.Value;
+                }
+                if (i >= NumOfScreen - _colScreens)
+                {
+                    if (NormalizedMinLowerBlendHeight >= _screenSettingEntities[i].BottomBlend.Value) NormalizedMinLowerBlendHeight = _screenSettingEntities[i].BottomBlend.Value;
+                }
+            }
+        }
+
         #endregion
 
 
@@ -363,6 +436,7 @@ namespace ProjectorUtility.Controller
             //    return;
             //}
             ProjectorUtilityBlender.Instance.SetBuffer();
+            CalculateNarrowestBlend();
         }
 
         /// <summary>
