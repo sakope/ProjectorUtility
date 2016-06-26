@@ -11,7 +11,7 @@ namespace ProjectorUtility.View
     {
         public InputField numOfCol, numOfRow;
         public SliderUI   blacknessUI, curveUI;
-        public Toggle     applyAllToggle;
+        public Toggle     applyAllToggle, lerpedInputModeToggle;
         public Button     saveButton, discardButton;
     }
 }

@@ -14,12 +14,14 @@ namespace ProjectorUtility.Model
         public ReactiveProperty<float> Blackness { get; private set; }
         public ReactiveProperty<float> Curve { get; private set; }
         public ReactiveProperty<bool>  ApplyAll { get; private set; }
+        public ReactiveProperty<bool>  LerpedInputMode { get; private set; }
 
         string _numOfColProjectorsProp = "numOfColProjectors";
         string _numOfRowProjectorsProp = "numOfRowProjectors";
         string _blacknessProp          = "blackness";
         string _curveProp              = "curve";
         string _applyAllProp           = "applyAll";
+        string _lerpedInputModeProp    = "sensorMode";
 
         /// <summary>
         /// Constructor.
@@ -39,6 +41,7 @@ namespace ProjectorUtility.Model
             Blackness          = new ReactiveProperty<float>(XmlSaver.Get<float>(_blacknessProp, 1.0f));
             Curve              = new ReactiveProperty<float>(XmlSaver.Get<float>(_curveProp, 1.0f));
             ApplyAll           = new ReactiveProperty<bool>(XmlSaver.Get<bool>(_applyAllProp, false));
+            LerpedInputMode    = new ReactiveProperty<bool>(XmlSaver.Get<bool>(_lerpedInputModeProp, true));
         }
 
         /// <summary>
@@ -51,6 +54,7 @@ namespace ProjectorUtility.Model
             Blackness.Value          = XmlSaver.Get<float>(_blacknessProp, 1.0f);
             Curve.Value              = XmlSaver.Get<float>(_curveProp, 1.0f);
             ApplyAll.Value           = XmlSaver.Get<bool>(_applyAllProp, false);
+            LerpedInputMode.Value    = XmlSaver.Get<bool>(_lerpedInputModeProp, false);
         }
 
         /// <summary>
@@ -63,6 +67,7 @@ namespace ProjectorUtility.Model
             XmlSaver.Set<float>(_blacknessProp, Blackness.Value);
             XmlSaver.Set<float>(_curveProp, Curve.Value);
             XmlSaver.Set<bool>(_applyAllProp, ApplyAll.Value);
+            XmlSaver.Set<bool>(_lerpedInputModeProp, LerpedInputMode.Value);
             XmlSaver.Save();
         }
     }

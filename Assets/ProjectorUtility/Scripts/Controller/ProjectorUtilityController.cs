@@ -55,45 +55,63 @@ namespace ProjectorUtility.Controller
         #region API
 
         /// <summary>
-        /// Normalized total blend width.
+        /// Normalized total blend height of specific column.
         /// </summary>
-        /// <returns>Return normalized total blend width</returns>
-        public float NormalizedBlendWidth()
-        {
-            float tbw = 0f;
-            _screenSettingEntities.ForEach(e => tbw += e.LeftBlend.Value + e.RightBlend.Value);
-            return tbw;
-        }
-
-        /// <summary>
-        /// normalized total blend height. 
-        /// </summary>
-        /// <returns>Return normalized total blend height</returns>
-        public float NormalizedBlendHeight()
+        /// <param name="col">screen colmun number</param>
+        /// <returns>Return normalized total blend height of specific column</returns>
+        public float NormalizedBlendHeight(int col)
         {
             float tbh = 0f;
-            _screenSettingEntities.ForEach(e => tbh += e.TopBlend.Value + e.BottomBlend.Value);
+            if (_colScreens == 1 || col < 1)
+                col = 1;
+            else if (col > _colScreens)
+                col = _colScreens;
+            for (int i = col - 1; i <= col - 1 + _colScreens * (_rowScreens - 1); i += _colScreens)
+            {
+                tbh += _screenSettingEntities[i].TopBlend.Value + _screenSettingEntities[i].BottomBlend.Value;
+            }
             return tbh;
         }
 
         /// <summary>
-        /// Total screen blending width.
+        /// Normalized total blend width of specific row.
         /// </summary>
-        /// <returns>Return total screen blending width</returns>
-        public float BlendingHeight()
+        /// <param name="row">screen row number</param>
+        /// <returns>Return normalized total blend width of specific row</returns>
+        public float NormalizedBlendWidth(int row)
         {
-            return NormalizedBlendHeight() * Screen.height;
+            float tbw = 0f;
+            if (_rowScreens == 1 || row < 1)
+                row = 1;
+            else if (row > _rowScreens)
+                row = _rowScreens;
+            for (int i = _colScreens * row - _colScreens ; i < _colScreens * row; i++)
+            {
+                tbw += _screenSettingEntities[i].LeftBlend.Value + _screenSettingEntities[i].RightBlend.Value;
+            }
+            return tbw;
         }
 
         /// <summary>
-        /// Total screen blend height.
+        /// Total screen blending width of specific column.
         /// </summary>
-        /// <returns>Return total screen blending height</returns>
-        public float BlendingWidth()
+        /// <param name="col">screen column number</param>
+        /// <returns>Return total screen blending width of specific column</returns>
+        public float BlendingHeight(int col)
         {
-            return NormalizedBlendWidth() * Screen.width;
+            return NormalizedBlendHeight(col) * Screen.height;
         }
 
+        /// <summary>
+        /// Total screen blend height of specific row.
+        /// </summary>
+        /// <param name="row">screen row number</param>
+        /// <returns>Return total screen blending height of specific row</returns>
+        public float BlendingWidth(int row)
+        {
+            return NormalizedBlendWidth(row) * Screen.width;
+        }
+        
         /// <summary>
         /// Narrowest upper blend height in screen space coord.
         /// </summary>
@@ -131,7 +149,9 @@ namespace ProjectorUtility.Controller
         }
         
         /// <summary>
-        /// Return adjusted viewport position for blend and uv shift. 
+        /// Return adjusted viewport position for blend and uv shift.
+        /// If lerped sensor mode is true, return lerped adjusted value for each col, row and uv shift.
+        /// If not, return adjust value for each projectors blends and shift without lerp. 
         /// </summary>
         /// <param name="position">Viewport position</param>
         /// <returns>Adjusted viewport position</returns>
@@ -145,64 +165,117 @@ namespace ProjectorUtility.Controller
             // Inverse y to match shader uv coord.
             Vector2 adjustPosition = new Vector2(position.x, 1f - position.y);
 
-            int   colProjectors         = _commonSettingEntity.NumOfColProjectors.Value;
-            int   rowProjectors         = _commonSettingEntity.NumOfRowProjectors.Value;
-            int   currentCol            = Mathf.FloorToInt(adjustPosition.x / (1.0f / colProjectors));
-            int   currentRow            = Mathf.FloorToInt(adjustPosition.y / (1.0f / rowProjectors));
-            int   screenID              = currentCol + currentRow * colProjectors;
+            int currentCol = Mathf.FloorToInt(adjustPosition.x / (1.0f / _colScreens));
+            int currentRow = Mathf.FloorToInt(adjustPosition.y / (1.0f / _rowScreens));
+            int screenID   = currentCol + currentRow * _colScreens;
 
-            if (screenID >= colProjectors * rowProjectors)
+            if (screenID >= _colScreens * _rowScreens)
             {
                 return Vector2.one;
             }
 
-            int leftOverlapCount  = Mathf.FloorToInt((float)colProjectors / 2f) - currentCol;
-            int rightOverlapCount = currentCol + 1 - Mathf.CeilToInt((float)colProjectors / 2f);
-            int upperOverlapCount = Mathf.FloorToInt((float)rowProjectors / 2f) - currentRow;
-            int lowerOverlapCount = currentRow + 1 - Mathf.CeilToInt((float)rowProjectors / 2f);
+            int leftOverlapCount  = Mathf.FloorToInt((float)_colScreens / 2f) - currentCol;
+            int rightOverlapCount = currentCol + 1 - Mathf.CeilToInt((float)_colScreens / 2f);
+            int upperOverlapCount = Mathf.FloorToInt((float)_rowScreens / 2f) - currentRow;
+            int lowerOverlapCount = currentRow + 1 - Mathf.CeilToInt((float)_rowScreens / 2f);
 
-            if (leftOverlapCount > 0)
+            if (_commonSettingEntity.LerpedInputMode.Value)
             {
-                for (int i = 0; i < leftOverlapCount; i++)
+                float upperBlends = 0f, lowerBlends = 0f, leftBlends = 0f, rightBlends = 0f;
+
+                if (leftOverlapCount > 0)
                 {
-                    if (colProjectors % 2 != 0 || colProjectors / 2 != currentCol + 1 + i)
+                    for (int i = 0; i < leftOverlapCount; i++)
                     {
-                        adjustPosition.x += _screenSettingEntities[screenID + i + 1].LeftBlend.Value;
+                        if (_colScreens % 2 != 0 || _colScreens / 2 != currentCol + 1 + i)
+                        {
+                            leftBlends += _screenSettingEntities[screenID + i + 1].LeftBlend.Value;
+                        }
+                        leftBlends += _screenSettingEntities[screenID + i].RightBlend.Value;
                     }
-                    adjustPosition.x += _screenSettingEntities[screenID + i].RightBlend.Value;
                 }
-            }
-            if (rightOverlapCount > 0)
-            {
-                for (int i = 0; i < rightOverlapCount; i++)
+                if (rightOverlapCount > 0)
                 {
-                    if (colProjectors % 2 != 0 || colProjectors / 2 != colProjectors - currentCol + i)
+                    for (int i = 0; i < rightOverlapCount; i++)
                     {
-                        adjustPosition.x -= _screenSettingEntities[screenID - i - 1].RightBlend.Value;
+                        if (_colScreens % 2 != 0 || _colScreens / 2 != _colScreens - currentCol + i)
+                        {
+                            rightBlends += _screenSettingEntities[screenID - i - 1].RightBlend.Value;
+                        }
+                        rightBlends += _screenSettingEntities[screenID - i].LeftBlend.Value;
                     }
-                    adjustPosition.x -= _screenSettingEntities[screenID - i].LeftBlend.Value;
                 }
-            }
-            if (upperOverlapCount > 0)
-            {
-                for (int i = 0; i < upperOverlapCount; i++)
+                if (upperOverlapCount > 0)
                 {
-                    if (rowProjectors % 2 != 0 || rowProjectors / 2 != currentRow + 1 + i)
+                    for (int i = 0; i < upperOverlapCount; i++)
                     {
-                        adjustPosition.y += _screenSettingEntities[screenID + (i + 1) * colProjectors].TopBlend.Value;
+                        if (_rowScreens % 2 != 0 || _rowScreens / 2 != currentRow + 1 + i)
+                        {
+                            upperBlends += _screenSettingEntities[screenID + (i + 1) * _colScreens].TopBlend.Value;
+                        }
+                        upperBlends += _screenSettingEntities[screenID + i * _colScreens].BottomBlend.Value;
                     }
-                    adjustPosition.y += _screenSettingEntities[screenID + i * colProjectors].BottomBlend.Value;
                 }
-            }
-            if (lowerOverlapCount > 0)
-            {
-                for (int i = 0; i < lowerOverlapCount; i++)
+                if (lowerOverlapCount > 0)
                 {
-                    if(rowProjectors % 2 != 0 || rowProjectors / 2 != rowProjectors - currentRow + i)
+                    for (int i = 0; i < lowerOverlapCount; i++)
                     {
-                        adjustPosition.y -= _screenSettingEntities[screenID - (i + 1) * colProjectors].BottomBlend.Value;
+                        if (_rowScreens % 2 != 0 || _rowScreens / 2 != _rowScreens - currentRow + i)
+                        {
+                            lowerBlends += _screenSettingEntities[screenID - (i + 1) * _colScreens].BottomBlend.Value;
+                        }
+                        lowerBlends += _screenSettingEntities[screenID - i * _colScreens].TopBlend.Value;
                     }
-                    adjustPosition.y -= _screenSettingEntities[screenID - i * colProjectors].TopBlend.Value;
+                }
+
+                adjustPosition.x = Mathf.Lerp(leftBlends,  1f - rightBlends, adjustPosition.x);
+                adjustPosition.y = Mathf.Lerp(upperBlends, 1f - lowerBlends, adjustPosition.y);
+            }
+            else
+            {
+                if (leftOverlapCount > 0)
+                {
+                    for (int i = 0; i < leftOverlapCount; i++)
+                    {
+                        if (_colScreens % 2 != 0 || _colScreens / 2 != currentCol + 1 + i)
+                        {
+                            adjustPosition.x += _screenSettingEntities[screenID + i + 1].LeftBlend.Value;
+                        }
+                        adjustPosition.x += _screenSettingEntities[screenID + i].RightBlend.Value;
+                    }
+                }
+                if (rightOverlapCount > 0)
+                {
+                    for (int i = 0; i < rightOverlapCount; i++)
+                    {
+                        if (_colScreens % 2 != 0 || _colScreens / 2 != _colScreens - currentCol + i)
+                        {
+                            adjustPosition.x -= _screenSettingEntities[screenID - i - 1].RightBlend.Value;
+                        }
+                        adjustPosition.x -= _screenSettingEntities[screenID - i].LeftBlend.Value;
+                    }
+                }
+                if (upperOverlapCount > 0)
+                {
+                    for (int i = 0; i < upperOverlapCount; i++)
+                    {
+                        if (_rowScreens % 2 != 0 || _rowScreens / 2 != currentRow + 1 + i)
+                        {
+                            adjustPosition.y += _screenSettingEntities[screenID + (i + 1) * _colScreens].TopBlend.Value;
+                        }
+                        adjustPosition.y += _screenSettingEntities[screenID + i * _colScreens].BottomBlend.Value;
+                    }
+                }
+                if (lowerOverlapCount > 0)
+                {
+                    for (int i = 0; i < lowerOverlapCount; i++)
+                    {
+                        if (_rowScreens % 2 != 0 || _rowScreens / 2 != _rowScreens - currentRow + i)
+                        {
+                            adjustPosition.y -= _screenSettingEntities[screenID - (i + 1) * _colScreens].BottomBlend.Value;
+                        }
+                        adjustPosition.y -= _screenSettingEntities[screenID - i * _colScreens].TopBlend.Value;
+                    }
                 }
             }
 
@@ -257,6 +330,7 @@ namespace ProjectorUtility.Controller
             _commonSettingEntity.Blackness.Subscribe(v => _commonSettingView.blacknessUI.SetVal(v));
             _commonSettingEntity.Curve.Subscribe(v => _commonSettingView.curveUI.SetVal(v));
             _commonSettingEntity.ApplyAll.Subscribe(v => _commonSettingView.applyAllToggle.isOn = v);
+            _commonSettingEntity.LerpedInputMode.Subscribe(v => _commonSettingView.lerpedInputModeToggle.isOn = v);
 
             //From view to model reactives
             _commonSettingView.numOfCol.OnValueChangedAsObservable().Where(s => int.Parse(s) < MAX_COL).Subscribe(s => _commonSettingEntity.NumOfColProjectors.Value = int.Parse(s));
@@ -264,6 +338,7 @@ namespace ProjectorUtility.Controller
             _commonSettingView.blacknessUI.slider.OnValueChangedAsObservable().Subscribe(v => _commonSettingEntity.Blackness.Value = v);
             _commonSettingView.curveUI.slider.OnValueChangedAsObservable().Subscribe(v => _commonSettingEntity.Curve.Value = v);
             _commonSettingView.applyAllToggle.OnValueChangedAsObservable().Subscribe(v => _commonSettingEntity.ApplyAll.Value = v);
+            _commonSettingView.lerpedInputModeToggle.OnValueChangedAsObservable().Subscribe(v => _commonSettingEntity.LerpedInputMode.Value = v);
             _commonSettingView.saveButton.OnClickAsObservable().Subscribe(_ => SaveAllData());
             _commonSettingView.discardButton.OnClickAsObservable().Subscribe(_ => LoadAllData());
 
