@@ -7,12 +7,12 @@ using System.Linq;
 using UniRx;
 using Common;
 
-using ProjectorUtility.Model;
-using ProjectorUtility.View;
-using ProjectorUtility.Core;
-
 namespace ProjectorUtility.Controller
 {
+    using Core;
+    using Model;
+    using View;
+
     /// <summary>
     /// Handle views and models
     /// </summary>
@@ -329,7 +329,7 @@ namespace ProjectorUtility.Controller
             _commonSettingEntity.NumOfRowProjectors.Subscribe(v => _commonSettingView.numOfRow.text = v.ToString());
             _commonSettingEntity.Blackness.Subscribe(v => _commonSettingView.blacknessUI.SetVal(v));
             _commonSettingEntity.Curve.Subscribe(v => _commonSettingView.curveUI.SetVal(v));
-            _commonSettingEntity.ApplyAll.Subscribe(v => _commonSettingView.applyAllToggle.isOn = v);
+            _commonSettingEntity.Symmetry.Subscribe(v => _commonSettingView.symmetryToggle.isOn = v);
             _commonSettingEntity.LerpedInputMode.Subscribe(v => _commonSettingView.lerpedInputModeToggle.isOn = v);
 
             //From view to model reactives
@@ -337,7 +337,7 @@ namespace ProjectorUtility.Controller
             _commonSettingView.numOfRow.OnValueChangedAsObservable().Where(s => int.Parse(s) < MAX_ROW).Subscribe(s => _commonSettingEntity.NumOfRowProjectors.Value = int.Parse(s));
             _commonSettingView.blacknessUI.slider.OnValueChangedAsObservable().Subscribe(v => _commonSettingEntity.Blackness.Value = v);
             _commonSettingView.curveUI.slider.OnValueChangedAsObservable().Subscribe(v => _commonSettingEntity.Curve.Value = v);
-            _commonSettingView.applyAllToggle.OnValueChangedAsObservable().Subscribe(v => _commonSettingEntity.ApplyAll.Value = v);
+            _commonSettingView.symmetryToggle.OnValueChangedAsObservable().Subscribe(v => _commonSettingEntity.Symmetry.Value = v);
             _commonSettingView.lerpedInputModeToggle.OnValueChangedAsObservable().Subscribe(v => _commonSettingEntity.LerpedInputMode.Value = v);
             _commonSettingView.saveButton.OnClickAsObservable().Subscribe(_ => SaveAllData());
             _commonSettingView.discardButton.OnClickAsObservable().Subscribe(_ => LoadAllData());
@@ -347,7 +347,6 @@ namespace ProjectorUtility.Controller
             _commonSettingEntity.NumOfRowProjectors.SkipLatestValueOnSubscribe().Subscribe(n => BuildScreenSetting());
             _commonSettingEntity.Blackness.SkipLatestValueOnSubscribe().Subscribe(n => UpdateBlend());
             _commonSettingEntity.Curve.SkipLatestValueOnSubscribe().Subscribe(n => UpdateBlend());
-            _commonSettingEntity.ApplyAll.SkipLatestValueOnSubscribe().Subscribe(n => UpdateBlendMaster());
         }
 
         /// <summary>
@@ -378,7 +377,7 @@ namespace ProjectorUtility.Controller
                     tabContentsSet.contents.transform.SetParent(_contentsParent, false);
                     tabContentsSet.contents.transform.SetAsLastSibling();
                     _tabs.Add(tabContentsSet);
-                    
+
                     //Create screen setting view model instance
                     ScreenSettingView   screenSettingView   = tabContentsSet.contents.GetComponent<ScreenSettingView>();
                     ScreenSettingEntity screenSettingEntity = new ScreenSettingEntity(i);
@@ -399,38 +398,32 @@ namespace ProjectorUtility.Controller
                     screenSettingEntity.uvShift.Subscribe(v => { screenSettingView.uvShiftX.SetVal(v.x); screenSettingView.uvShiftY.SetVal(v.y); });
 
                     //From model to other reactives (skip initialize)
-                    if (i == 0)
-                    {
-                        screenSettingEntity.TopBlend.SkipLatestValueOnSubscribe().Subscribe(v => UpdateBlendMaster());
-                        screenSettingEntity.BottomBlend.SkipLatestValueOnSubscribe().Subscribe(v => UpdateBlendMaster());
-                        screenSettingEntity.LeftBlend.SkipLatestValueOnSubscribe().Subscribe(v => UpdateBlendMaster());
-                        screenSettingEntity.RightBlend.SkipLatestValueOnSubscribe().Subscribe(v => UpdateBlendMaster());
-                        screenSettingEntity.topMask.SkipLatestValueOnSubscribe().Subscribe(v => UpdateBlendMaster());
-                        screenSettingEntity.bottomMask.SkipLatestValueOnSubscribe().Subscribe(v => UpdateBlendMaster());
-                        screenSettingEntity.leftMask.SkipLatestValueOnSubscribe().Subscribe(v => UpdateBlendMaster());
-                        screenSettingEntity.rightMask.SkipLatestValueOnSubscribe().Subscribe(v => UpdateBlendMaster());
-                        screenSettingEntity.topLeftMask.SkipLatestValueOnSubscribe().Subscribe(v => UpdateBlendMaster());
-                        screenSettingEntity.topRightMask.SkipLatestValueOnSubscribe().Subscribe(v => UpdateBlendMaster());
-                        screenSettingEntity.bottomLeftMask.SkipLatestValueOnSubscribe().Subscribe(v => UpdateBlendMaster());
-                        screenSettingEntity.bottomRightMask.SkipLatestValueOnSubscribe().Subscribe(v => UpdateBlendMaster());
-                        screenSettingEntity.uvShift.SkipLatestValueOnSubscribe().Subscribe(v => UpdateBlendMaster());
-                    }
-                    else
-                    {
-                        screenSettingEntity.TopBlend.SkipLatestValueOnSubscribe().Subscribe(v => UpdateBlend());
-                        screenSettingEntity.BottomBlend.SkipLatestValueOnSubscribe().Subscribe(v => UpdateBlend());
-                        screenSettingEntity.LeftBlend.SkipLatestValueOnSubscribe().Subscribe(v => UpdateBlend());
-                        screenSettingEntity.RightBlend.SkipLatestValueOnSubscribe().Subscribe(v => UpdateBlend());
-                        screenSettingEntity.topMask.SkipLatestValueOnSubscribe().Subscribe(v => UpdateBlend());
-                        screenSettingEntity.bottomMask.SkipLatestValueOnSubscribe().Subscribe(v => UpdateBlend());
-                        screenSettingEntity.leftMask.SkipLatestValueOnSubscribe().Subscribe(v => UpdateBlend());
-                        screenSettingEntity.rightMask.SkipLatestValueOnSubscribe().Subscribe(v => UpdateBlend());
-                        screenSettingEntity.topLeftMask.SkipLatestValueOnSubscribe().Subscribe(v => UpdateBlend());
-                        screenSettingEntity.topRightMask.SkipLatestValueOnSubscribe().Subscribe(v => UpdateBlend());
-                        screenSettingEntity.bottomLeftMask.SkipLatestValueOnSubscribe().Subscribe(v => UpdateBlend());
-                        screenSettingEntity.bottomRightMask.SkipLatestValueOnSubscribe().Subscribe(v => UpdateBlend());
-                        screenSettingEntity.uvShift.SkipLatestValueOnSubscribe().Subscribe(v => UpdateBlend());
-                    }
+                    var id = i;
+                    screenSettingEntity.TopBlend.SkipLatestValueOnSubscribe().Subscribe(v => {
+                        if (_commonSettingEntity.Symmetry.Value && id >= _colScreens) _screenSettingEntities[id - _colScreens].BottomBlend.Value = v;
+                        UpdateBlend();
+                    });
+                    screenSettingEntity.BottomBlend.SkipLatestValueOnSubscribe().Subscribe(v => {
+                        if (_commonSettingEntity.Symmetry.Value && id < NumOfScreen - _colScreens) _screenSettingEntities[id + _colScreens].TopBlend.Value = v;
+                        UpdateBlend();
+                    });
+                    screenSettingEntity.LeftBlend.SkipLatestValueOnSubscribe().Subscribe(v => {
+                        if (_commonSettingEntity.Symmetry.Value && (float)id % (float)_colScreens != 0) _screenSettingEntities[id - 1].RightBlend.Value = v;
+                        UpdateBlend();
+                    });
+                    screenSettingEntity.RightBlend.SkipLatestValueOnSubscribe().Subscribe(v => {
+                        if (_commonSettingEntity.Symmetry.Value && (float)(id + 1) % (float)_colScreens != 0) _screenSettingEntities[id + 1].LeftBlend.Value = v;
+                        UpdateBlend();
+                    });
+                    screenSettingEntity.topMask.SkipLatestValueOnSubscribe().Subscribe(v => UpdateBlend());
+                    screenSettingEntity.bottomMask.SkipLatestValueOnSubscribe().Subscribe(v => UpdateBlend());
+                    screenSettingEntity.leftMask.SkipLatestValueOnSubscribe().Subscribe(v => UpdateBlend());
+                    screenSettingEntity.rightMask.SkipLatestValueOnSubscribe().Subscribe(v => UpdateBlend());
+                    screenSettingEntity.topLeftMask.SkipLatestValueOnSubscribe().Subscribe(v => UpdateBlend());
+                    screenSettingEntity.topRightMask.SkipLatestValueOnSubscribe().Subscribe(v => UpdateBlend());
+                    screenSettingEntity.bottomLeftMask.SkipLatestValueOnSubscribe().Subscribe(v => UpdateBlend());
+                    screenSettingEntity.bottomRightMask.SkipLatestValueOnSubscribe().Subscribe(v => UpdateBlend());
+                    screenSettingEntity.uvShift.SkipLatestValueOnSubscribe().Subscribe(v => UpdateBlend());
 
                     //From view to model reactives
                     screenSettingView.topBlendUI.slider.OnValueChangedAsObservable().Subscribe(v => screenSettingEntity.TopBlend.Value = v);
@@ -512,33 +505,6 @@ namespace ProjectorUtility.Controller
             //}
             ProjectorUtilityBlender.Instance.SetBuffer();
             CalculateNarrowestBlend();
-        }
-
-        /// <summary>
-        /// reafine all blend, mask and uv shift using screen 1 setting.
-        /// </summary>
-        void UpdateBlendMaster()
-        {
-            if(_commonSettingEntity.ApplyAll.Value)
-            {
-                for (int i = 1; i < _screenSettingEntities.Count; i++)
-                {
-                    _screenSettingEntities[i].TopBlend.Value = _screenSettingEntities[0].TopBlend.Value;
-                    _screenSettingEntities[i].BottomBlend.Value = _screenSettingEntities[0].BottomBlend.Value;
-                    _screenSettingEntities[i].LeftBlend.Value = _screenSettingEntities[0].LeftBlend.Value;
-                    _screenSettingEntities[i].RightBlend.Value = _screenSettingEntities[0].RightBlend.Value;
-                    _screenSettingEntities[i].topMask.Value = _screenSettingEntities[0].topMask.Value;
-                    _screenSettingEntities[i].bottomMask.Value = _screenSettingEntities[0].bottomMask.Value;
-                    _screenSettingEntities[i].leftMask.Value = _screenSettingEntities[0].leftMask.Value;
-                    _screenSettingEntities[i].rightMask.Value = _screenSettingEntities[0].rightMask.Value;
-                    _screenSettingEntities[i].topLeftMask.Value = _screenSettingEntities[0].topLeftMask.Value;
-                    _screenSettingEntities[i].topRightMask.Value = _screenSettingEntities[0].topRightMask.Value;
-                    _screenSettingEntities[i].bottomLeftMask.Value = _screenSettingEntities[0].bottomLeftMask.Value;
-                    _screenSettingEntities[i].bottomRightMask.Value = _screenSettingEntities[0].bottomRightMask.Value;
-                    _screenSettingEntities[i].uvShift.Value = _screenSettingEntities[0].uvShift.Value;
-                }
-            }
-            UpdateBlend();
         }
 
         #endregion

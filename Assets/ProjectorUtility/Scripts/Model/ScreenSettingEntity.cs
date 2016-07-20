@@ -39,7 +39,7 @@ namespace ProjectorUtility.Model
         {
             ID = id;
 
-            string suffix       = ID.ToString();
+            string suffix        = ID.ToString();
             _topBlendProp        = "topBlendProp" + suffix;
             _bottomBlendProp     = "bottomBlendProp" + suffix;
             _leftBlendProp       = "leftBlendProp" + suffix;
