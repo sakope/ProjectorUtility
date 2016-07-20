@@ -12,6 +12,6 @@ namespace ProjectorUtility.View
         public InputField numOfCol, numOfRow;
         public SliderUI   blacknessUI, curveUI;
         public Toggle     symmetryToggle, lerpedInputModeToggle;
-        public Button     saveButton, discardButton;
+        public Button     saveButton, discardButton, gammaButton;
     }
 }

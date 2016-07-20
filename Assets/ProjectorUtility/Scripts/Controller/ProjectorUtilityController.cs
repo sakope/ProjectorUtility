@@ -341,6 +341,7 @@ namespace ProjectorUtility.Controller
             _commonSettingView.lerpedInputModeToggle.OnValueChangedAsObservable().Subscribe(v => _commonSettingEntity.LerpedInputMode.Value = v);
             _commonSettingView.saveButton.OnClickAsObservable().Subscribe(_ => SaveAllData());
             _commonSettingView.discardButton.OnClickAsObservable().Subscribe(_ => LoadAllData());
+            _commonSettingView.gammaButton.OnClickAsObservable().Subscribe(_ => _commonSettingEntity.Curve.Value = CommonSettingEntity.GAMMA_CURVE);
 
             //From model to core reactive (skip initialize).
             _commonSettingEntity.NumOfColProjectors.SkipLatestValueOnSubscribe().Subscribe(n => BuildScreenSetting());

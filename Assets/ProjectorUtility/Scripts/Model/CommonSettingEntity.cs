@@ -23,6 +23,8 @@ namespace ProjectorUtility.Model
         string _symmetry               = "symmetry";
         string _lerpedInputModeProp    = "sensorMode";
 
+        public const float GAMMA_CURVE = 0.4545454f;
+
         /// <summary>
         /// Constructor.
         /// </summary>
@@ -39,7 +41,7 @@ namespace ProjectorUtility.Model
             NumOfColProjectors = new ReactiveProperty<int>(XmlSaver.Get<int>(_numOfColProjectorsProp, 1));
             NumOfRowProjectors = new ReactiveProperty<int>(XmlSaver.Get<int>(_numOfRowProjectorsProp, 1));
             Blackness          = new ReactiveProperty<float>(XmlSaver.Get<float>(_blacknessProp, 1.0f));
-            Curve              = new ReactiveProperty<float>(XmlSaver.Get<float>(_curveProp, 1.0f));
+            Curve              = new ReactiveProperty<float>(XmlSaver.Get<float>(_curveProp, GAMMA_CURVE));
             Symmetry           = new ReactiveProperty<bool>(XmlSaver.Get<bool>(_symmetry, true));
             LerpedInputMode    = new ReactiveProperty<bool>(XmlSaver.Get<bool>(_lerpedInputModeProp, true));
         }
@@ -52,7 +54,7 @@ namespace ProjectorUtility.Model
             NumOfColProjectors.Value = XmlSaver.Get<int>(_numOfColProjectorsProp, 1);
             NumOfRowProjectors.Value = XmlSaver.Get<int>(_numOfRowProjectorsProp, 1);
             Blackness.Value          = XmlSaver.Get<float>(_blacknessProp, 1.0f);
-            Curve.Value              = XmlSaver.Get<float>(_curveProp, 1.0f);
+            Curve.Value              = XmlSaver.Get<float>(_curveProp, GAMMA_CURVE);
             Symmetry.Value           = XmlSaver.Get<bool>(_symmetry, true);
             LerpedInputMode.Value    = XmlSaver.Get<bool>(_lerpedInputModeProp, false);
         }
