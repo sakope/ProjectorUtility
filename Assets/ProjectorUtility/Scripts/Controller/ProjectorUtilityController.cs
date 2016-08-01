@@ -329,6 +329,7 @@ namespace ProjectorUtility.Controller
             _commonSettingEntity.NumOfRowProjectors.Subscribe(v => _commonSettingView.numOfRow.text = v.ToString());
             _commonSettingEntity.Blackness.Subscribe(v => _commonSettingView.blacknessUI.SetVal(v));
             _commonSettingEntity.Curve.Subscribe(v => _commonSettingView.curveUI.SetVal(v));
+            _commonSettingEntity.Brightness.Subscribe(v => _commonSettingView.brightnessUI.SetVal(v));
             _commonSettingEntity.Symmetry.Subscribe(v => _commonSettingView.symmetryToggle.isOn = v);
             _commonSettingEntity.LerpedInputMode.Subscribe(v => _commonSettingView.lerpedInputModeToggle.isOn = v);
 
@@ -337,6 +338,7 @@ namespace ProjectorUtility.Controller
             _commonSettingView.numOfRow.OnValueChangedAsObservable().Where(s => int.Parse(s) < MAX_ROW).Subscribe(s => _commonSettingEntity.NumOfRowProjectors.Value = int.Parse(s));
             _commonSettingView.blacknessUI.slider.OnValueChangedAsObservable().Subscribe(v => _commonSettingEntity.Blackness.Value = v);
             _commonSettingView.curveUI.slider.OnValueChangedAsObservable().Subscribe(v => _commonSettingEntity.Curve.Value = v);
+            _commonSettingView.brightnessUI.slider.OnValueChangedAsObservable().Subscribe(v => _commonSettingEntity.Brightness.Value = v);
             _commonSettingView.symmetryToggle.OnValueChangedAsObservable().Subscribe(v => _commonSettingEntity.Symmetry.Value = v);
             _commonSettingView.lerpedInputModeToggle.OnValueChangedAsObservable().Subscribe(v => _commonSettingEntity.LerpedInputMode.Value = v);
             _commonSettingView.saveButton.OnClickAsObservable().Subscribe(_ => SaveAllData());
@@ -348,6 +350,7 @@ namespace ProjectorUtility.Controller
             _commonSettingEntity.NumOfRowProjectors.SkipLatestValueOnSubscribe().Subscribe(n => BuildScreenSetting());
             _commonSettingEntity.Blackness.SkipLatestValueOnSubscribe().Subscribe(n => UpdateBlend());
             _commonSettingEntity.Curve.SkipLatestValueOnSubscribe().Subscribe(n => UpdateBlend());
+            _commonSettingEntity.Brightness.SkipLatestValueOnSubscribe().Subscribe(n => UpdateBlend());
         }
 
         /// <summary>

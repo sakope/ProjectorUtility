@@ -30,7 +30,7 @@
     uint _numOfRowPrjctrs;
 
     sampler2D _MainTex;
-    float _blackness, _power;
+    float _blackness, _power, _brightness;
 
     fixed4 frag(v2f_img vf) : COLOR {
         float2 coord = vf.uv;
@@ -83,14 +83,18 @@
         vf.uv += float2(buf[SID].uvShiftX, buf[SID].uvShiftY);
 
         //// overlap gradient region. ////
-        col *= saturate((coord.x - (float)colID / (float)_numOfColPrjctrs) / buf[SID].overlapLeft);
+        col *= saturate(abs(coord.x - (float)colID / (float)_numOfColPrjctrs) / buf[SID].overlapLeft);
         col *= saturate(abs(((float)colID + 1.0) / (float)_numOfColPrjctrs - coord.x) / buf[SID].overlapRight);
-        col *= saturate((coord.y - rowID / (float)_numOfRowPrjctrs) / buf[SID].overlapTop);
+        col *= saturate(abs(coord.y - rowID / (float)_numOfRowPrjctrs) / buf[SID].overlapTop);
         col *= saturate(abs(((float)rowID + 1.0) / (float)_numOfRowPrjctrs - coord.y) / buf[SID].overlapBottom);
 
         //// overlap color tuning region. ////
+        //blackness.
         col = saturate(1.0 - (1.0 - col) * _blackness);
+        //blend curve.
         col = pow(col, _power);
+        //blending area brightness.
+        col = lerp(col, col * _brightness, (col < 1.0));
 
         //// mask region. ////
         fixed topMask = step(vrtclLen * rowID + buf[SID].maskTop, coord.y);

@@ -100,10 +100,12 @@ namespace ProjectorUtility.Core
             _computeBuffer.SetData(buf);
 
             _mat.SetBuffer("buf", _computeBuffer);
+
             _mat.SetInt("_numOfColPrjctrs", ProjectorUtilityController.Instance.GetCommonSettingEntity.NumOfColProjectors.Value);
             _mat.SetInt("_numOfRowPrjctrs", ProjectorUtilityController.Instance.GetCommonSettingEntity.NumOfRowProjectors.Value);
             _mat.SetFloat("_blackness", ProjectorUtilityController.Instance.GetCommonSettingEntity.Blackness.Value);
             _mat.SetFloat("_power", ProjectorUtilityController.Instance.GetCommonSettingEntity.Curve.Value);
+            _mat.SetFloat("_brightness", ProjectorUtilityController.Instance.GetCommonSettingEntity.Brightness.Value);
         }
     }
 }
