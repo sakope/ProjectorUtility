@@ -1,10 +1,10 @@
 ﻿using UnityEngine;
 
-using UniRx;
-using Utility;
-
 namespace ProjectorUtility.Model
 {
+    using UniRx;
+    using XmlSaver;
+
     /// <summary>
     /// Screen setting model.
     /// Handle load and save.
@@ -114,6 +114,7 @@ namespace ProjectorUtility.Model
             XmlSaver.Set<Vector2>(_topRightMaskProp, topRightMask.Value);
             XmlSaver.Set<Vector2>(_bottomLeftMaskProp, bottomLeftMask.Value);
             XmlSaver.Set<Vector2>(_bottomRightMaskProp, bottomRightMask.Value);
+            XmlSaver.Set<Vector2>(_uvShiftProp, uvShift.Value);
             XmlSaver.Save();
         }
     } 

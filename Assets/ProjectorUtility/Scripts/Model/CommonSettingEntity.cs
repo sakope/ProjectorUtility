@@ -1,8 +1,8 @@
-﻿using UniRx;
-using Utility;
-
-namespace ProjectorUtility.Model
+﻿namespace ProjectorUtility.Model
 {
+    using UniRx;
+    using XmlSaver;
+
     /// <summary>
     /// Common setting model.
     /// Handle load and save.
