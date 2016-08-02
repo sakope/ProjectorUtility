@@ -5,6 +5,7 @@
     }
     CGINCLUDE
     #include "UnityCG.cginc"
+    #define ANTIALIAS 512
 
     struct ProjectorUtilityBuffer
     {
@@ -41,8 +42,8 @@
         //screenID. It's row order from upper left. (just like Z form)
         uint SID   = colID + rowID * _numOfColPrjctrs;
 
-        fixed hrztlLen = 1.0 / (float)_numOfColPrjctrs;
-        fixed vrtclLen = 1.0 / (float)_numOfRowPrjctrs;
+        float hrztlLen = 1.0 / (float)_numOfColPrjctrs;
+        float vrtclLen = 1.0 / (float)_numOfRowPrjctrs;
         
         //// uv shift for overlap region. ////
         int leftOLCount  = (int)floor(_numOfColPrjctrs / 2.0) - (int)colID;
@@ -103,18 +104,34 @@
         fixed rgtMask = step(coord.x, hrztlLen * (colID + 1) - buf[SID].maskRight);
         col *= topMask.xxxx * btmMask.xxxx * lftMask.xxxx * rgtMask.xxxx;
 
-		//// corner mask region. ////
-		fixed topLeftMask = buf[SID].maskTopLeft.x * (1 - saturate((coord.y - vrtclLen * rowID) / buf[SID].maskTopLeft.y));
-		topLeftMask = step(topLeftMask + hrztlLen * colID, coord.x);
-		fixed topRightMask = buf[SID].maskTopRight.x * (1 - saturate((coord.y - vrtclLen * rowID) / buf[SID].maskTopRight.y));
-		topRightMask = step(coord.x, hrztlLen * (colID + 1) - topRightMask);
-		fixed bottomLeftMask = buf[SID].maskBottomLeft.x * (1 - saturate((vrtclLen * (rowID + 1) - coord.y) / buf[SID].maskBottomLeft.y));
-		bottomLeftMask = step(bottomLeftMask + hrztlLen * colID, coord.x);
-		fixed bottomRightMask = buf[SID].maskBottomRight.x * (1 - saturate((vrtclLen * (rowID + 1) - coord.y) / buf[SID].maskBottomRight.y));
-		bottomRightMask = step(coord.x, hrztlLen * (colID + 1) - bottomRightMask);
-		col *= (topLeftMask * topRightMask * bottomLeftMask * bottomRightMask).xxxx;
+        //// corner mask region. ////
+        float topLeftMaskX = buf[SID].maskTopLeft.x * (1 - saturate((coord.y - vrtclLen * rowID) / buf[SID].maskTopLeft.y));
+        float topLeftMaskY = buf[SID].maskTopLeft.y * (1 - saturate((coord.x - hrztlLen * colID) / buf[SID].maskTopLeft.x));
+        topLeftMaskX = saturate((coord.x - (topLeftMaskX + hrztlLen * colID)) * ANTIALIAS);
+        topLeftMaskY = saturate((coord.y - (topLeftMaskY + vrtclLen * rowID)) * ANTIALIAS);
+        float topLeftMask = topLeftMaskX * topLeftMaskY;
 
-		//// color result. ////
+        float topRightMaskX = buf[SID].maskTopRight.x * (1 - saturate((coord.y - vrtclLen * rowID) / buf[SID].maskTopRight.y));
+        float topRightMaskY = buf[SID].maskTopRight.y * (1 - saturate((hrztlLen * (colID + 1) - coord.x) / buf[SID].maskTopRight.x));
+        topRightMaskX = saturate(((hrztlLen * (colID + 1) - topRightMaskX) - coord.x) * ANTIALIAS);
+        topRightMaskY = saturate((coord.y - (topRightMaskY + vrtclLen * rowID)) * ANTIALIAS);
+        float topRightMask = topRightMaskX * topRightMaskY;
+
+        float bottomLeftMaskX = buf[SID].maskBottomLeft.x * (1 - saturate((vrtclLen * (rowID + 1) - coord.y) / buf[SID].maskBottomLeft.y));
+        float bottomLeftMaskY = buf[SID].maskBottomLeft.y * (1 - saturate((coord.x - hrztlLen * colID) / buf[SID].maskBottomLeft.x));
+        bottomLeftMaskX = saturate((coord.x - (bottomLeftMaskX + hrztlLen * colID)) * ANTIALIAS);
+        bottomLeftMaskY = saturate(((vrtclLen * (rowID + 1) - bottomLeftMaskY) - coord.y) * ANTIALIAS);
+        float bottomLeftMask = bottomLeftMaskX * bottomLeftMaskY;
+
+        float bottomRightMaskX = buf[SID].maskBottomRight.x * (1 - saturate((vrtclLen * (rowID + 1) - coord.y) / buf[SID].maskBottomRight.y));
+        float bottomRightMaskY = buf[SID].maskBottomRight.y * (1 - saturate((hrztlLen * (colID + 1) - coord.x) / buf[SID].maskBottomRight.x));
+        bottomRightMaskX = saturate(((hrztlLen * (colID + 1) - bottomRightMaskX) - coord.x) * ANTIALIAS);
+        bottomRightMaskY = saturate(((vrtclLen * (rowID + 1) - bottomRightMaskY) - coord.y) * ANTIALIAS);
+        float bottomRightMask = bottomRightMaskX * bottomRightMaskY;
+
+        col *= (topLeftMask * topRightMask * bottomLeftMask * bottomRightMask).xxxx;
+
+        //// color result. ////
         return col * tex2D(_MainTex, vf.uv);
     }
     ENDCG
