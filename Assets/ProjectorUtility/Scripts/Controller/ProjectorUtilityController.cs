@@ -472,6 +472,10 @@ namespace ProjectorUtility.Controller
         void CalculateNarrowestBlend()
         {
             NormalizedMinLeftBlendWidth = NormalizedMinRightBlendWidth = NormalizedMinUpperBlendHeight = NormalizedMinLowerBlendHeight = 1;
+
+            if (NumOfScreen != _colScreens * _rowScreens) return;
+            if (_screenSettingEntities.Count != NumOfScreen) return;
+
             for (int i = 0; i < NumOfScreen; i++)
             {
                 if (i % _colScreens == 0)
@@ -503,10 +507,6 @@ namespace ProjectorUtility.Controller
         /// </summary>
         void UpdateBlend()
         {
-            //if(NumOfScreen == 0 && _screenSettingModelViewMap.Count == 0)
-            //{
-            //    return;
-            //}
             ProjectorUtilityBlender.Instance.SetBuffer();
             CalculateNarrowestBlend();
         }
@@ -515,7 +515,7 @@ namespace ProjectorUtility.Controller
 
 
         #region save and load
-        
+
         /// <summary>
         /// Save all data.
         /// </summary>
