@@ -1,7 +1,7 @@
 ﻿namespace ProjectorUtility.Model
 {
     using UniRx;
-    using XmlSaver;
+    using XmlStorage;
 
     /// <summary>
     /// Common setting model.
@@ -27,6 +27,8 @@
 
         public const float GAMMA_CURVE = 0.4545454f;
 
+        public const string XMLAggregationKey = "Blending";
+
         /// <summary>
         /// Constructor.
         /// </summary>
@@ -40,13 +42,18 @@
         /// </summary>
         private void InitialLoad()
         {
-            NumOfColProjectors = new ReactiveProperty<int>(XmlSaver.Get<int>(_numOfColProjectorsProp, 1));
-            NumOfRowProjectors = new ReactiveProperty<int>(XmlSaver.Get<int>(_numOfRowProjectorsProp, 1));
-            Blackness          = new ReactiveProperty<float>(XmlSaver.Get<float>(_blacknessProp, 1.0f));
-            Curve              = new ReactiveProperty<float>(XmlSaver.Get<float>(_curveProp, GAMMA_CURVE));
-            Brightness         = new ReactiveProperty<float>(XmlSaver.Get<float>(_brightnessProp, 1.0f));
-            Symmetry           = new ReactiveProperty<bool>(XmlSaver.Get<bool>(_symmetry, true));
-            LerpedInputMode    = new ReactiveProperty<bool>(XmlSaver.Get<bool>(_lerpedInputModeProp, true));
+            var currentAggregationKey = XmlStorage.CurrentAggregationName;
+            XmlStorage.ChangeAggregation(CommonSettingEntity.XMLAggregationKey);
+
+            NumOfColProjectors = new ReactiveProperty<int>(XmlStorage.Get<int>(_numOfColProjectorsProp, 1));
+            NumOfRowProjectors = new ReactiveProperty<int>(XmlStorage.Get<int>(_numOfRowProjectorsProp, 1));
+            Blackness          = new ReactiveProperty<float>(XmlStorage.Get<float>(_blacknessProp, 1.0f));
+            Curve              = new ReactiveProperty<float>(XmlStorage.Get<float>(_curveProp, GAMMA_CURVE));
+            Brightness         = new ReactiveProperty<float>(XmlStorage.Get<float>(_brightnessProp, 1.0f));
+            Symmetry           = new ReactiveProperty<bool>(XmlStorage.Get<bool>(_symmetry, true));
+            LerpedInputMode    = new ReactiveProperty<bool>(XmlStorage.Get<bool>(_lerpedInputModeProp, true));
+
+            XmlStorage.ChangeAggregation(currentAggregationKey);
         }
 
         /// <summary>
@@ -54,13 +61,18 @@
         /// </summary>
         public void Load()
         {
-            NumOfColProjectors.Value = XmlSaver.Get<int>(_numOfColProjectorsProp, 1);
-            NumOfRowProjectors.Value = XmlSaver.Get<int>(_numOfRowProjectorsProp, 1);
-            Blackness.Value          = XmlSaver.Get<float>(_blacknessProp, 1.0f);
-            Curve.Value              = XmlSaver.Get<float>(_curveProp, GAMMA_CURVE);
-            Brightness.Value         = XmlSaver.Get<float>(_brightnessProp, 1.0f);
-            Symmetry.Value           = XmlSaver.Get<bool>(_symmetry, true);
-            LerpedInputMode.Value    = XmlSaver.Get<bool>(_lerpedInputModeProp, false);
+            var currentAggregationKey = XmlStorage.CurrentAggregationName;
+            XmlStorage.ChangeAggregation(CommonSettingEntity.XMLAggregationKey);
+
+            NumOfColProjectors.Value = XmlStorage.Get<int>(_numOfColProjectorsProp, 1);
+            NumOfRowProjectors.Value = XmlStorage.Get<int>(_numOfRowProjectorsProp, 1);
+            Blackness.Value          = XmlStorage.Get<float>(_blacknessProp, 1.0f);
+            Curve.Value              = XmlStorage.Get<float>(_curveProp, GAMMA_CURVE);
+            Brightness.Value         = XmlStorage.Get<float>(_brightnessProp, 1.0f);
+            Symmetry.Value           = XmlStorage.Get<bool>(_symmetry, true);
+            LerpedInputMode.Value    = XmlStorage.Get<bool>(_lerpedInputModeProp, false);
+
+            XmlStorage.ChangeAggregation(currentAggregationKey);
         }
 
         /// <summary>
@@ -68,14 +80,20 @@
         /// </summary>
         public void Save()
         {
-            XmlSaver.Set<int>(_numOfColProjectorsProp, NumOfColProjectors.Value);
-            XmlSaver.Set<int>(_numOfRowProjectorsProp, NumOfRowProjectors.Value);
-            XmlSaver.Set<float>(_blacknessProp, Blackness.Value);
-            XmlSaver.Set<float>(_curveProp, Curve.Value);
-            XmlSaver.Set<float>(_brightnessProp, Brightness.Value);
-            XmlSaver.Set<bool>(_symmetry, Symmetry.Value);
-            XmlSaver.Set<bool>(_lerpedInputModeProp, LerpedInputMode.Value);
-            XmlSaver.Save();
+            XmlStorage.FileName = CommonSettingEntity.XMLAggregationKey;
+            var currentAggregationKey = XmlStorage.CurrentAggregationName;
+            XmlStorage.ChangeAggregation(CommonSettingEntity.XMLAggregationKey);
+
+            XmlStorage.Set<int>(_numOfColProjectorsProp, NumOfColProjectors.Value);
+            XmlStorage.Set<int>(_numOfRowProjectorsProp, NumOfRowProjectors.Value);
+            XmlStorage.Set<float>(_blacknessProp, Blackness.Value);
+            XmlStorage.Set<float>(_curveProp, Curve.Value);
+            XmlStorage.Set<float>(_brightnessProp, Brightness.Value);
+            XmlStorage.Set<bool>(_symmetry, Symmetry.Value);
+            XmlStorage.Set<bool>(_lerpedInputModeProp, LerpedInputMode.Value);
+            XmlStorage.Save();
+
+            XmlStorage.ChangeAggregation(currentAggregationKey);
         }
     }
 }

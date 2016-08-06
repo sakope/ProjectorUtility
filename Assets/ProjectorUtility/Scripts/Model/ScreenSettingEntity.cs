@@ -3,7 +3,7 @@
 namespace ProjectorUtility.Model
 {
     using UniRx;
-    using XmlSaver;
+    using XmlStorage;
 
     /// <summary>
     /// Screen setting model.
@@ -62,19 +62,24 @@ namespace ProjectorUtility.Model
         /// </summary>
         private void InitialLoad()
         {
-            TopBlend        = new ReactiveProperty<float>(XmlSaver.Get<float>(_topBlendProp, 0f));
-            BottomBlend     = new ReactiveProperty<float>(XmlSaver.Get<float>(_bottomBlendProp, 0f));
-            LeftBlend       = new ReactiveProperty<float>(XmlSaver.Get<float>(_leftBlendProp, 0f));
-            RightBlend      = new ReactiveProperty<float>(XmlSaver.Get<float>(_rightBlendProp, 0f));
-            topMask         = new ReactiveProperty<float>(XmlSaver.Get<float>(_topMaskProp, 0f));
-            bottomMask      = new ReactiveProperty<float>(XmlSaver.Get<float>(_bottomMaskProp, 0f));
-            leftMask        = new ReactiveProperty<float>(XmlSaver.Get<float>(_leftMaskProp, 0f));
-            rightMask       = new ReactiveProperty<float>(XmlSaver.Get<float>(_rightMaskProp, 0f));
-            topLeftMask     = new ReactiveProperty<Vector2>(XmlSaver.Get<Vector2>(_topLeftMaskProp, Vector2.zero));
-            topRightMask    = new ReactiveProperty<Vector2>(XmlSaver.Get<Vector2>(_topRightMaskProp, Vector2.zero));
-            bottomLeftMask  = new ReactiveProperty<Vector2>(XmlSaver.Get<Vector2>(_bottomLeftMaskProp, Vector2.zero));
-            bottomRightMask = new ReactiveProperty<Vector2>(XmlSaver.Get<Vector2>(_bottomRightMaskProp, Vector2.zero));
-            uvShift         = new ReactiveProperty<Vector2>(XmlSaver.Get<Vector2>(_uvShiftProp, Vector2.zero));
+            var currentAggregationKey = XmlStorage.CurrentAggregationName;
+            XmlStorage.ChangeAggregation(CommonSettingEntity.XMLAggregationKey);
+
+            TopBlend        = new ReactiveProperty<float>(XmlStorage.Get<float>(_topBlendProp, 0f));
+            BottomBlend     = new ReactiveProperty<float>(XmlStorage.Get<float>(_bottomBlendProp, 0f));
+            LeftBlend       = new ReactiveProperty<float>(XmlStorage.Get<float>(_leftBlendProp, 0f));
+            RightBlend      = new ReactiveProperty<float>(XmlStorage.Get<float>(_rightBlendProp, 0f));
+            topMask         = new ReactiveProperty<float>(XmlStorage.Get<float>(_topMaskProp, 0f));
+            bottomMask      = new ReactiveProperty<float>(XmlStorage.Get<float>(_bottomMaskProp, 0f));
+            leftMask        = new ReactiveProperty<float>(XmlStorage.Get<float>(_leftMaskProp, 0f));
+            rightMask       = new ReactiveProperty<float>(XmlStorage.Get<float>(_rightMaskProp, 0f));
+            topLeftMask     = new ReactiveProperty<Vector2>(XmlStorage.Get<Vector2>(_topLeftMaskProp, Vector2.zero));
+            topRightMask    = new ReactiveProperty<Vector2>(XmlStorage.Get<Vector2>(_topRightMaskProp, Vector2.zero));
+            bottomLeftMask  = new ReactiveProperty<Vector2>(XmlStorage.Get<Vector2>(_bottomLeftMaskProp, Vector2.zero));
+            bottomRightMask = new ReactiveProperty<Vector2>(XmlStorage.Get<Vector2>(_bottomRightMaskProp, Vector2.zero));
+            uvShift         = new ReactiveProperty<Vector2>(XmlStorage.Get<Vector2>(_uvShiftProp, Vector2.zero));
+
+            XmlStorage.ChangeAggregation(currentAggregationKey);
         }
 
         /// <summary>
@@ -82,19 +87,24 @@ namespace ProjectorUtility.Model
         /// </summary>
         public void Load()
         {
-            TopBlend.Value        = XmlSaver.Get<float>(_topBlendProp, 0f);
-            BottomBlend.Value     = XmlSaver.Get<float>(_bottomBlendProp, 0f);
-            LeftBlend.Value       = XmlSaver.Get<float>(_leftBlendProp, 0f);
-            RightBlend.Value      = XmlSaver.Get<float>(_rightBlendProp, 0f);
-            topMask.Value         = XmlSaver.Get<float>(_topMaskProp, 0f);
-            bottomMask.Value      = XmlSaver.Get<float>(_bottomMaskProp, 0f);
-            leftMask.Value        = XmlSaver.Get<float>(_leftMaskProp, 0f);
-            rightMask.Value       = XmlSaver.Get<float>(_rightMaskProp, 0f);
-            topLeftMask.Value     = XmlSaver.Get<Vector2>(_topLeftMaskProp, Vector2.zero);
-            topRightMask.Value    = XmlSaver.Get<Vector2>(_topRightMaskProp, Vector2.zero);
-            bottomLeftMask.Value  = XmlSaver.Get<Vector2>(_bottomLeftMaskProp, Vector2.zero);
-            bottomRightMask.Value = XmlSaver.Get<Vector2>(_bottomRightMaskProp, Vector2.zero);
-            uvShift.Value         = XmlSaver.Get<Vector2>(_uvShiftProp, Vector2.zero);
+            var currentAggregationKey = XmlStorage.CurrentAggregationName;
+            XmlStorage.ChangeAggregation(CommonSettingEntity.XMLAggregationKey);
+
+            TopBlend.Value        = XmlStorage.Get<float>(_topBlendProp, 0f);
+            BottomBlend.Value     = XmlStorage.Get<float>(_bottomBlendProp, 0f);
+            LeftBlend.Value       = XmlStorage.Get<float>(_leftBlendProp, 0f);
+            RightBlend.Value      = XmlStorage.Get<float>(_rightBlendProp, 0f);
+            topMask.Value         = XmlStorage.Get<float>(_topMaskProp, 0f);
+            bottomMask.Value      = XmlStorage.Get<float>(_bottomMaskProp, 0f);
+            leftMask.Value        = XmlStorage.Get<float>(_leftMaskProp, 0f);
+            rightMask.Value       = XmlStorage.Get<float>(_rightMaskProp, 0f);
+            topLeftMask.Value     = XmlStorage.Get<Vector2>(_topLeftMaskProp, Vector2.zero);
+            topRightMask.Value    = XmlStorage.Get<Vector2>(_topRightMaskProp, Vector2.zero);
+            bottomLeftMask.Value  = XmlStorage.Get<Vector2>(_bottomLeftMaskProp, Vector2.zero);
+            bottomRightMask.Value = XmlStorage.Get<Vector2>(_bottomRightMaskProp, Vector2.zero);
+            uvShift.Value         = XmlStorage.Get<Vector2>(_uvShiftProp, Vector2.zero);
+
+            XmlStorage.ChangeAggregation(currentAggregationKey);
         }
 
         /// <summary>
@@ -102,20 +112,26 @@ namespace ProjectorUtility.Model
         /// </summary>
         public void Save()
         {
-            XmlSaver.Set<float>(_topBlendProp, TopBlend.Value);
-            XmlSaver.Set<float>(_bottomBlendProp, BottomBlend.Value);
-            XmlSaver.Set<float>(_leftBlendProp, LeftBlend.Value);
-            XmlSaver.Set<float>(_rightBlendProp, RightBlend.Value);
-            XmlSaver.Set<float>(_topMaskProp, topMask.Value);
-            XmlSaver.Set<float>(_bottomMaskProp, bottomMask.Value);
-            XmlSaver.Set<float>(_leftMaskProp, leftMask.Value);
-            XmlSaver.Set<float>(_rightMaskProp, rightMask.Value);
-            XmlSaver.Set<Vector2>(_topLeftMaskProp, topLeftMask.Value);
-            XmlSaver.Set<Vector2>(_topRightMaskProp, topRightMask.Value);
-            XmlSaver.Set<Vector2>(_bottomLeftMaskProp, bottomLeftMask.Value);
-            XmlSaver.Set<Vector2>(_bottomRightMaskProp, bottomRightMask.Value);
-            XmlSaver.Set<Vector2>(_uvShiftProp, uvShift.Value);
-            XmlSaver.Save();
+            XmlStorage.FileName = CommonSettingEntity.XMLAggregationKey;
+            var currentAggregationKey = XmlStorage.CurrentAggregationName;
+            XmlStorage.ChangeAggregation(CommonSettingEntity.XMLAggregationKey);
+
+            XmlStorage.Set<float>(_topBlendProp, TopBlend.Value);
+            XmlStorage.Set<float>(_bottomBlendProp, BottomBlend.Value);
+            XmlStorage.Set<float>(_leftBlendProp, LeftBlend.Value);
+            XmlStorage.Set<float>(_rightBlendProp, RightBlend.Value);
+            XmlStorage.Set<float>(_topMaskProp, topMask.Value);
+            XmlStorage.Set<float>(_bottomMaskProp, bottomMask.Value);
+            XmlStorage.Set<float>(_leftMaskProp, leftMask.Value);
+            XmlStorage.Set<float>(_rightMaskProp, rightMask.Value);
+            XmlStorage.Set<Vector2>(_topLeftMaskProp, topLeftMask.Value);
+            XmlStorage.Set<Vector2>(_topRightMaskProp, topRightMask.Value);
+            XmlStorage.Set<Vector2>(_bottomLeftMaskProp, bottomLeftMask.Value);
+            XmlStorage.Set<Vector2>(_bottomRightMaskProp, bottomRightMask.Value);
+            XmlStorage.Set<Vector2>(_uvShiftProp, uvShift.Value);
+            XmlStorage.Save();
+
+            XmlStorage.ChangeAggregation(currentAggregationKey);
         }
     } 
 }
