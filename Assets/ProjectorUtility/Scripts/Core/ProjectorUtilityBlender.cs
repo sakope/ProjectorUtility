@@ -40,7 +40,8 @@ namespace ProjectorUtility.Core
     /// <summary>
     /// Handle shader.
     /// </summary>
-    public class ProjectorUtilityBlender : SingletonMonoBehaviour<ProjectorUtilityBlender>
+    [RequireComponent(typeof(Camera))]
+    public class ProjectorUtilityBlender : MonoBehaviour
     {
         [SerializeField]
         Shader _shader;
@@ -48,22 +49,9 @@ namespace ProjectorUtility.Core
         Material _mat;
         ComputeBuffer _computeBuffer;
 
-        void OnEnable()
+        public void Initialize()
         {
             _mat = new Material(_shader);
-        }
-
-        void OnDisable()
-        {
-            _computeBuffer.Release();
-        }
-
-        void OnRenderImage(RenderTexture src, RenderTexture dest)
-        {
-            if (_mat != null)
-            {
-                Graphics.Blit(src, dest, _mat);
-            }
         }
 
         public void SetBuffer()
@@ -106,6 +94,23 @@ namespace ProjectorUtility.Core
             _mat.SetFloat("_blackness", ProjectorUtilityController.Instance.GetCommonSettingEntity.Blackness.Value);
             _mat.SetFloat("_power", ProjectorUtilityController.Instance.GetCommonSettingEntity.Curve.Value);
             _mat.SetFloat("_brightness", ProjectorUtilityController.Instance.GetCommonSettingEntity.Brightness.Value);
+        }
+
+        void OnDestroy()
+        {
+            if(_mat)
+            {
+                DestroyImmediate(_mat);
+            }
+            _computeBuffer.Release();
+        }
+
+        void OnRenderImage(RenderTexture src, RenderTexture dest)
+        {
+            if (_mat != null)
+            {
+                Graphics.Blit(src, dest, _mat);
+            }
         }
     }
 }

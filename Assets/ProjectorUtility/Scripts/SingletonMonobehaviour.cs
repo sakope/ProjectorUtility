@@ -28,18 +28,22 @@ namespace Common
 
         protected virtual void Awake()
         {
-            Initialize();
+            InitCheck();
         }
 
-        void Initialize()
+        void InitCheck()
         {
-            if (instance != null)
+            if (instance == null)
             {
-                Destroy(this.gameObject);
+                instance = (T)this;
                 return;
             }
-            instance = this as T;
-            Debug.Log(this.GetType().Name + " Initialize.");
+            else if (instance == this)
+            {
+                return;
+            }
+
+            Destroy(this);
         }
     }
 }

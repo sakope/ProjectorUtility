@@ -84,10 +84,10 @@
         vf.uv += float2(buf[SID].uvShiftX, buf[SID].uvShiftY);
 
         //// overlap gradient region. ////
-        col *= saturate(abs(coord.x - (float)colID / (float)_numOfColPrjctrs) / buf[SID].overlapLeft);
-        col *= saturate(abs(((float)colID + 1.0) / (float)_numOfColPrjctrs - coord.x) / buf[SID].overlapRight);
-        col *= saturate(abs(coord.y - rowID / (float)_numOfRowPrjctrs) / buf[SID].overlapTop);
-        col *= saturate(abs(((float)rowID + 1.0) / (float)_numOfRowPrjctrs - coord.y) / buf[SID].overlapBottom);
+        col *= lerp(saturate(abs(coord.x - (float)colID / (float)_numOfColPrjctrs) / buf[SID].overlapLeft), 1, buf[SID].overlapLeft == 0);
+        col *= lerp(saturate(abs(((float)colID + 1.0) / (float)_numOfColPrjctrs - coord.x) / buf[SID].overlapRight), 1, buf[SID].overlapRight == 0);
+        col *= lerp(saturate(abs(coord.y - (float)rowID / (float)_numOfRowPrjctrs) / buf[SID].overlapTop), 1, buf[SID].overlapTop == 0);
+        col *= lerp(saturate(abs(((float)rowID + 1.0) / (float)_numOfRowPrjctrs - coord.y) / buf[SID].overlapBottom), 1, buf[SID].overlapBottom == 0);
 
         //// overlap color tuning region. ////
         //blackness.

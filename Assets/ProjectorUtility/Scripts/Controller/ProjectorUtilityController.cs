@@ -25,10 +25,11 @@ namespace ProjectorUtility.Controller
             public Button     tab;
             public GameObject contents;
         }
-        [SerializeField] TabContentsSet _commonTabContents;
-        [SerializeField] TabContentsSet _screenTabContents;
-        [SerializeField] Transform      _tabParent;
-        [SerializeField] Transform      _contentsParent;
+        [SerializeField] ProjectorUtilityBlender _targetBlender;
+        [SerializeField] TabContentsSet          _commonTabContents;
+        [SerializeField] TabContentsSet          _screenTabContents;
+        [SerializeField] Transform               _tabParent;
+        [SerializeField] Transform               _contentsParent;
 
         CommonSettingEntity _commonSettingEntity;
         CommonSettingView   _commonSettingView;
@@ -295,10 +296,7 @@ namespace ProjectorUtility.Controller
         protected override void Awake()
         {
             base.Awake();
-        }
-
-        void Start()
-        {
+            _targetBlender.Initialize();
             _commonSettingEntity = new CommonSettingEntity();
             _commonSettingView   = _commonTabContents.contents.GetComponent<CommonSettingView>();
 
@@ -507,7 +505,7 @@ namespace ProjectorUtility.Controller
         /// </summary>
         void UpdateBlend()
         {
-            ProjectorUtilityBlender.Instance.SetBuffer();
+            _targetBlender.SetBuffer();
             CalculateNarrowestBlend();
         }
 
