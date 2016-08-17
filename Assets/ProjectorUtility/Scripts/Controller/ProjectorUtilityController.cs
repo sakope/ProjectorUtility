@@ -399,6 +399,26 @@ namespace ProjectorUtility.Controller
                     screenSettingEntity.bottomRightMask.Subscribe(v => { screenSettingView.bottomRightMaskXUI.SetVal(v.x); screenSettingView.bottomRightMaskYUI.SetVal(v.y); });
                     screenSettingEntity.uvShift.Subscribe(v => { screenSettingView.uvShiftX.SetVal(v.x); screenSettingView.uvShiftY.SetVal(v.y); });
 
+                    //From view to model reactives
+                    screenSettingView.topBlendUI.slider.OnValueChangedAsObservable().Subscribe(v => screenSettingEntity.TopBlend.Value = v);
+                    screenSettingView.bottomBlendUI.slider.OnValueChangedAsObservable().Subscribe(v => screenSettingEntity.BottomBlend.Value = v);
+                    screenSettingView.leftBlendUI.slider.OnValueChangedAsObservable().Subscribe(v => screenSettingEntity.LeftBlend.Value = v);
+                    screenSettingView.rightBlendUI.slider.OnValueChangedAsObservable().Subscribe(v => screenSettingEntity.RightBlend.Value = v);
+                    screenSettingView.topMaskUI.slider.OnValueChangedAsObservable().Subscribe(v => screenSettingEntity.topMask.Value = v);
+                    screenSettingView.bottomMaskUI.slider.OnValueChangedAsObservable().Subscribe(v => screenSettingEntity.bottomMask.Value = v);
+                    screenSettingView.leftMaskUI.slider.OnValueChangedAsObservable().Subscribe(v => screenSettingEntity.leftMask.Value = v);
+                    screenSettingView.rightMaskUI.slider.OnValueChangedAsObservable().Subscribe(v => screenSettingEntity.rightMask.Value = v);
+                    screenSettingView.topLeftMaskXUI.slider.OnValueChangedAsObservable().Subscribe(v => screenSettingEntity.topLeftMask.Value = new Vector2(v, screenSettingEntity.topLeftMask.Value.y));
+                    screenSettingView.topLeftMaskYUI.slider.OnValueChangedAsObservable().Subscribe(v => screenSettingEntity.topLeftMask.Value = new Vector2(screenSettingEntity.topLeftMask.Value.x, v));
+                    screenSettingView.topRightMaskXUI.slider.OnValueChangedAsObservable().Subscribe(v => screenSettingEntity.topRightMask.Value = new Vector2(v, screenSettingEntity.topRightMask.Value.y));
+                    screenSettingView.topRightMaskYUI.slider.OnValueChangedAsObservable().Subscribe(v => screenSettingEntity.topRightMask.Value = new Vector2(screenSettingEntity.topRightMask.Value.x, v));
+                    screenSettingView.bottomLeftMaskXUI.slider.OnValueChangedAsObservable().Subscribe(v => screenSettingEntity.bottomLeftMask.Value = new Vector2(v, screenSettingEntity.bottomLeftMask.Value.y));
+                    screenSettingView.bottomLeftMaskYUI.slider.OnValueChangedAsObservable().Subscribe(v => screenSettingEntity.bottomLeftMask.Value = new Vector2(screenSettingEntity.bottomLeftMask.Value.x, v));
+                    screenSettingView.bottomRightMaskXUI.slider.OnValueChangedAsObservable().Subscribe(v => screenSettingEntity.bottomRightMask.Value = new Vector2(v, screenSettingEntity.bottomRightMask.Value.y));
+                    screenSettingView.bottomRightMaskYUI.slider.OnValueChangedAsObservable().Subscribe(v => screenSettingEntity.bottomRightMask.Value = new Vector2(screenSettingEntity.bottomRightMask.Value.x, v));
+                    screenSettingView.uvShiftX.slider.OnValueChangedAsObservable().Subscribe(v => screenSettingEntity.uvShift.Value = new Vector2(v, screenSettingEntity.uvShift.Value.y));
+                    screenSettingView.uvShiftY.slider.OnValueChangedAsObservable().Subscribe(v => screenSettingEntity.uvShift.Value = new Vector2(screenSettingEntity.uvShift.Value.x, v));
+
                     //From model to other reactives (skip initialize)
                     var id = i;
                     screenSettingEntity.TopBlend.SkipLatestValueOnSubscribe().Subscribe(v => {
@@ -426,26 +446,6 @@ namespace ProjectorUtility.Controller
                     screenSettingEntity.bottomLeftMask.SkipLatestValueOnSubscribe().Subscribe(v => UpdateBlend());
                     screenSettingEntity.bottomRightMask.SkipLatestValueOnSubscribe().Subscribe(v => UpdateBlend());
                     screenSettingEntity.uvShift.SkipLatestValueOnSubscribe().Subscribe(v => UpdateBlend());
-
-                    //From view to model reactives
-                    screenSettingView.topBlendUI.slider.OnValueChangedAsObservable().Subscribe(v => screenSettingEntity.TopBlend.Value = v);
-                    screenSettingView.bottomBlendUI.slider.OnValueChangedAsObservable().Subscribe(v => screenSettingEntity.BottomBlend.Value = v);
-                    screenSettingView.leftBlendUI.slider.OnValueChangedAsObservable().Subscribe(v => screenSettingEntity.LeftBlend.Value = v);
-                    screenSettingView.rightBlendUI.slider.OnValueChangedAsObservable().Subscribe(v => screenSettingEntity.RightBlend.Value = v);
-                    screenSettingView.topMaskUI.slider.OnValueChangedAsObservable().Subscribe(v => screenSettingEntity.topMask.Value = v);
-                    screenSettingView.bottomMaskUI.slider.OnValueChangedAsObservable().Subscribe(v => screenSettingEntity.bottomMask.Value = v);
-                    screenSettingView.leftMaskUI.slider.OnValueChangedAsObservable().Subscribe(v => screenSettingEntity.leftMask.Value = v);
-                    screenSettingView.rightMaskUI.slider.OnValueChangedAsObservable().Subscribe(v => screenSettingEntity.rightMask.Value = v);
-                    screenSettingView.topLeftMaskXUI.slider.OnValueChangedAsObservable().Subscribe(v => screenSettingEntity.topLeftMask.Value = new Vector2(v, screenSettingEntity.topLeftMask.Value.y));
-                    screenSettingView.topLeftMaskYUI.slider.OnValueChangedAsObservable().Subscribe(v => screenSettingEntity.topLeftMask.Value = new Vector2(screenSettingEntity.topLeftMask.Value.x, v));
-                    screenSettingView.topRightMaskXUI.slider.OnValueChangedAsObservable().Subscribe(v => screenSettingEntity.topRightMask.Value = new Vector2(v, screenSettingEntity.topRightMask.Value.y));
-                    screenSettingView.topRightMaskYUI.slider.OnValueChangedAsObservable().Subscribe(v => screenSettingEntity.topRightMask.Value = new Vector2(screenSettingEntity.topRightMask.Value.x, v));
-                    screenSettingView.bottomLeftMaskXUI.slider.OnValueChangedAsObservable().Subscribe(v => screenSettingEntity.bottomLeftMask.Value = new Vector2(v, screenSettingEntity.bottomLeftMask.Value.y));
-                    screenSettingView.bottomLeftMaskYUI.slider.OnValueChangedAsObservable().Subscribe(v => screenSettingEntity.bottomLeftMask.Value = new Vector2(screenSettingEntity.bottomLeftMask.Value.x, v));
-                    screenSettingView.bottomRightMaskXUI.slider.OnValueChangedAsObservable().Subscribe(v => screenSettingEntity.bottomRightMask.Value = new Vector2(v, screenSettingEntity.bottomRightMask.Value.y));
-                    screenSettingView.bottomRightMaskYUI.slider.OnValueChangedAsObservable().Subscribe(v => screenSettingEntity.bottomRightMask.Value = new Vector2(screenSettingEntity.bottomRightMask.Value.x, v));
-                    screenSettingView.uvShiftX.slider.OnValueChangedAsObservable().Subscribe(v => screenSettingEntity.uvShift.Value = new Vector2(v, screenSettingEntity.uvShift.Value.y));
-                    screenSettingView.uvShiftY.slider.OnValueChangedAsObservable().Subscribe(v => screenSettingEntity.uvShift.Value = new Vector2(screenSettingEntity.uvShift.Value.x, v));
 
                     _screenSettingEntities.Add(screenSettingEntity);
                     _screenSettingViews.Add(screenSettingView);
