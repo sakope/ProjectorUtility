@@ -43,7 +43,7 @@
         private void InitialLoad()
         {
             var currentAggregationKey = XmlStorage.CurrentAggregationName;
-            XmlStorage.ChangeAggregation(CommonSettingEntity.XMLAggregationKey);
+            XmlStorage.ChangeAggregation(XMLAggregationKey);
 
             NumOfColProjectors = new ReactiveProperty<int>(XmlStorage.Get<int>(_numOfColProjectorsProp, 1));
             NumOfRowProjectors = new ReactiveProperty<int>(XmlStorage.Get<int>(_numOfRowProjectorsProp, 1));
@@ -62,7 +62,7 @@
         public void Load()
         {
             var currentAggregationKey = XmlStorage.CurrentAggregationName;
-            XmlStorage.ChangeAggregation(CommonSettingEntity.XMLAggregationKey);
+            XmlStorage.ChangeAggregation(XMLAggregationKey);
 
             NumOfColProjectors.Value = XmlStorage.Get<int>(_numOfColProjectorsProp, 1);
             NumOfRowProjectors.Value = XmlStorage.Get<int>(_numOfRowProjectorsProp, 1);
@@ -80,9 +80,9 @@
         /// </summary>
         public void Save()
         {
-            XmlStorage.FileName = CommonSettingEntity.XMLAggregationKey;
+            XmlStorage.FileName = XMLAggregationKey;
             var currentAggregationKey = XmlStorage.CurrentAggregationName;
-            XmlStorage.ChangeAggregation(CommonSettingEntity.XMLAggregationKey);
+            XmlStorage.ChangeAggregation(XMLAggregationKey);
 
             XmlStorage.Set<int>(_numOfColProjectorsProp, NumOfColProjectors.Value);
             XmlStorage.Set<int>(_numOfRowProjectorsProp, NumOfRowProjectors.Value);

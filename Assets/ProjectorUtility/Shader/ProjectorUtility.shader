@@ -5,7 +5,6 @@
     }
     CGINCLUDE
     #include "UnityCG.cginc"
-    #define ANTIALIAS 512
 
     struct ProjectorUtilityBuffer
     {
@@ -20,10 +19,6 @@
         float  maskBottom;
         float  maskLeft;
         float  maskRight;
-        float2 maskTopLeft;
-        float2 maskTopRight;
-        float2 maskBottomLeft;
-        float2 maskBottomRight;
     };
 
     StructuredBuffer<ProjectorUtilityBuffer> buf;
@@ -33,7 +28,7 @@
     sampler2D _MainTex;
     float _blackness, _power, _brightness;
 
-    fixed4 frag(v2f_img vf) : COLOR {
+    fixed4 frag_blend(v2f_img vf) : COLOR {
         float2 coord = vf.uv;
         fixed  col   = 1.0;
 
@@ -104,39 +99,18 @@
         fixed rgtMask = step(coord.x, hrztlLen * (colID + 1) - buf[SID].maskRight);
         col *= topMask.xxxx * btmMask.xxxx * lftMask.xxxx * rgtMask.xxxx;
 
-        //// corner mask region. ////
-        float topLeftMaskX = buf[SID].maskTopLeft.x * (1 - saturate((coord.y - vrtclLen * rowID) / buf[SID].maskTopLeft.y));
-        float topLeftMaskY = buf[SID].maskTopLeft.y * (1 - saturate((coord.x - hrztlLen * colID) / buf[SID].maskTopLeft.x));
-        topLeftMaskX = saturate((coord.x - (topLeftMaskX + hrztlLen * colID)) * ANTIALIAS);
-        topLeftMaskY = saturate((coord.y - (topLeftMaskY + vrtclLen * rowID)) * ANTIALIAS);
-        float topLeftMask = topLeftMaskX * topLeftMaskY;
-
-        float topRightMaskX = buf[SID].maskTopRight.x * (1 - saturate((coord.y - vrtclLen * rowID) / buf[SID].maskTopRight.y));
-        float topRightMaskY = buf[SID].maskTopRight.y * (1 - saturate((hrztlLen * (colID + 1) - coord.x) / buf[SID].maskTopRight.x));
-        topRightMaskX = saturate(((hrztlLen * (colID + 1) - topRightMaskX) - coord.x) * ANTIALIAS);
-        topRightMaskY = saturate((coord.y - (topRightMaskY + vrtclLen * rowID)) * ANTIALIAS);
-        float topRightMask = topRightMaskX * topRightMaskY;
-
-        float bottomLeftMaskX = buf[SID].maskBottomLeft.x * (1 - saturate((vrtclLen * (rowID + 1) - coord.y) / buf[SID].maskBottomLeft.y));
-        float bottomLeftMaskY = buf[SID].maskBottomLeft.y * (1 - saturate((coord.x - hrztlLen * colID) / buf[SID].maskBottomLeft.x));
-        bottomLeftMaskX = saturate((coord.x - (bottomLeftMaskX + hrztlLen * colID)) * ANTIALIAS);
-        bottomLeftMaskY = saturate(((vrtclLen * (rowID + 1) - bottomLeftMaskY) - coord.y) * ANTIALIAS);
-        float bottomLeftMask = bottomLeftMaskX * bottomLeftMaskY;
-
-        float bottomRightMaskX = buf[SID].maskBottomRight.x * (1 - saturate((vrtclLen * (rowID + 1) - coord.y) / buf[SID].maskBottomRight.y));
-        float bottomRightMaskY = buf[SID].maskBottomRight.y * (1 - saturate((hrztlLen * (colID + 1) - coord.x) / buf[SID].maskBottomRight.x));
-        bottomRightMaskX = saturate(((hrztlLen * (colID + 1) - bottomRightMaskX) - coord.x) * ANTIALIAS);
-        bottomRightMaskY = saturate(((vrtclLen * (rowID + 1) - bottomRightMaskY) - coord.y) * ANTIALIAS);
-        float bottomRightMask = bottomRightMaskX * bottomRightMaskY;
-
-        col *= (topLeftMask * topRightMask * bottomLeftMask * bottomRightMask).xxxx;
-
         //// color result. ////
         return col * tex2D(_MainTex, vf.uv);
     }
+
+    fixed4 frag_mask(v2f_img v) : COLOR {
+        return fixed4(0, 0, 0, 1);
+    }
+
     ENDCG
 
     SubShader {
+        Tags{ "RenderType" = "Opaque" "Queue" = "Overlay+99000" }
         ZTest Always Cull Off ZWrite Off
         Fog{ Mode off }
         ColorMask RGB
@@ -146,7 +120,16 @@
             #pragma fragmentoption ARB_precision_hint_fastest
             #pragma target 5.0
             #pragma vertex vert_img
-            #pragma fragment frag
+            #pragma fragment frag_blend
+            ENDCG
+        }
+
+        pass {
+            CGPROGRAM
+            #pragma fragmentoption ARB_precision_hint_fastest
+            #pragma target 5.0
+            #pragma vertex vert_img
+            #pragma fragment frag_mask
             ENDCG
         }
     }

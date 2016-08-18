@@ -1,6 +1,7 @@
 ﻿using UnityEngine;
 using UnityEngine.UI;
 using System;
+using System.Runtime.InteropServices;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -9,13 +10,39 @@ using Common;
 
 namespace ProjectorUtility.Controller
 {
-    using Core;
     using Model;
     using View;
 
     /// <summary>
+    /// compute buffer
+    /// </summary>
+    struct ProjectorUtilityBuffer
+    {
+        public uint screenID;
+        public float overlapTop, overlapBottom, overlapLeft, overlapRight;
+        public float uvShiftX, uvShiftY;
+        public float maskTop, maskBottom, maskLeft, maskRight;
+
+        public ProjectorUtilityBuffer(uint screenID, float overlapTop, float overlapBottom, float overlapLeft, float overlapRight, float uvShiftX, float uvShiftY, float maskTop, float maskBottom, float maskLeft, float maskRight)
+        {
+            this.screenID = screenID;
+            this.overlapTop = overlapTop;
+            this.overlapBottom = overlapBottom;
+            this.overlapLeft = overlapLeft;
+            this.overlapRight = overlapRight;
+            this.uvShiftX = uvShiftX;
+            this.uvShiftY = uvShiftY;
+            this.maskTop = maskTop;
+            this.maskBottom = maskBottom;
+            this.maskLeft = maskLeft;
+            this.maskRight = maskRight;
+        }
+    }
+    
+    /// <summary>
     /// Handle views and models
     /// </summary>
+    [RequireComponent(typeof(Camera))]
     public class ProjectorUtilityController : SingletonMonoBehaviour<ProjectorUtilityController>
     {
         #region variables
@@ -25,17 +52,35 @@ namespace ProjectorUtility.Controller
             public Button     tab;
             public GameObject contents;
         }
-        [SerializeField] ProjectorUtilityBlender _targetBlender;
+        [Serializable] public struct KeyViewModalSet
+        {
+            public KeyCode    key;
+            public GameObject modal;
+        }
+        [SerializeField] Shader _shader;
         [SerializeField] TabContentsSet          _commonTabContents;
         [SerializeField] TabContentsSet          _screenTabContents;
+        [SerializeField] RectMaskSettingView     _rectMaskSettingView;
         [SerializeField] Transform               _tabParent;
         [SerializeField] Transform               _contentsParent;
+        //[SerializeField] KeyViewModalSet         _simpleMode;
+        [SerializeField] KeyViewModalSet         _advancedMode;
+        [SerializeField] KeyViewModalSet         _rectMaskMode;
 
-        CommonSettingEntity _commonSettingEntity;
-        CommonSettingView   _commonSettingView;
+        CommonSettingEntity       _commonSettingEntity;
+        CommonSettingView         _commonSettingView;
+        RectMaskSettingEntity     _rectMaskSettingEntity;
         List<ScreenSettingEntity> _screenSettingEntities = new List<ScreenSettingEntity>();
         List<ScreenSettingView>   _screenSettingViews    = new List<ScreenSettingView>();
-        List<TabContentsSet> _tabs = new List<TabContentsSet>();
+        List<TabContentsSet>      _tabs = new List<TabContentsSet>();
+        List<KeyViewModalSet>     _keyViewModalSets = new List<KeyViewModalSet>();
+
+        ComputeBuffer _computeBuffer;
+        Camera        _camera;
+        Material      _mat;
+        Mesh          _maskMesh;
+        List<Mesh>    _maskingMeshes = new List<Mesh>();
+
         int _colScreens, _rowScreens;
 
         const int MAX_COL = 30;
@@ -43,13 +88,14 @@ namespace ProjectorUtility.Controller
 
         public int NumOfScreen { get; private set; }
         public CommonSettingEntity GetCommonSettingEntity { get { return _commonSettingEntity; } }
+        public RectMaskSettingEntity GetRectMaskSettingEntity { get { return _rectMaskSettingEntity; } }
         public List<ScreenSettingEntity> GetScreenSettingEntities { get { return _screenSettingEntities; } }
 
         public float NormalizedMinUpperBlendHeight { get; private set; }
         public float NormalizedMinLowerBlendHeight { get; private set; }
         public float NormalizedMinLeftBlendWidth   { get; private set; }
         public float NormalizedMinRightBlendWidth  { get; private set; }
-
+        
         #endregion
 
 
@@ -148,7 +194,7 @@ namespace ProjectorUtility.Controller
         {
             return NormalizedMinRightBlendWidth * Screen.width;
         }
-        
+
         /// <summary>
         /// Return adjusted viewport position for blend and uv shift.
         /// If lerped sensor mode is true, return lerped adjusted value for each col, row and uv shift.
@@ -296,13 +342,21 @@ namespace ProjectorUtility.Controller
         protected override void Awake()
         {
             base.Awake();
-            _targetBlender.Initialize();
-            _commonSettingEntity = new CommonSettingEntity();
-            _commonSettingView   = _commonTabContents.contents.GetComponent<CommonSettingView>();
+            _mat = new Material(_shader);
+            _camera = GetComponent<Camera>();
+
+            //_keyViewModalSets.Add(_simpleMode);
+            _keyViewModalSets.Add(_advancedMode);
+            _keyViewModalSets.Add(_rectMaskMode);
+
+            _commonSettingEntity   = new CommonSettingEntity();
+            _commonSettingView     = _commonTabContents.contents.GetComponent<CommonSettingView>();
+            _rectMaskSettingEntity = new RectMaskSettingEntity();
 
             _tabs.Add(_commonTabContents);
 
             BuildCommonSetting();
+            BuildRectMaskSetting();
             BuildScreenSetting();
             SetTabSystem();
 
@@ -339,8 +393,8 @@ namespace ProjectorUtility.Controller
             _commonSettingView.brightnessUI.slider.OnValueChangedAsObservable().Subscribe(v => _commonSettingEntity.Brightness.Value = v);
             _commonSettingView.symmetryToggle.OnValueChangedAsObservable().Subscribe(v => _commonSettingEntity.Symmetry.Value = v);
             _commonSettingView.lerpedInputModeToggle.OnValueChangedAsObservable().Subscribe(v => _commonSettingEntity.LerpedInputMode.Value = v);
-            _commonSettingView.saveButton.OnClickAsObservable().Subscribe(_ => SaveAllData());
-            _commonSettingView.discardButton.OnClickAsObservable().Subscribe(_ => LoadAllData());
+            _commonSettingView.saveButton.OnClickAsObservable().Subscribe(_ => SaveAdvanceData());
+            _commonSettingView.discardButton.OnClickAsObservable().Subscribe(_ => LoadAdvanceData());
             _commonSettingView.gammaButton.OnClickAsObservable().Subscribe(_ => _commonSettingEntity.Curve.Value = CommonSettingEntity.GAMMA_CURVE);
 
             //From model to core reactive (skip initialize).
@@ -349,6 +403,35 @@ namespace ProjectorUtility.Controller
             _commonSettingEntity.Blackness.SkipLatestValueOnSubscribe().Subscribe(n => UpdateBlend());
             _commonSettingEntity.Curve.SkipLatestValueOnSubscribe().Subscribe(n => UpdateBlend());
             _commonSettingEntity.Brightness.SkipLatestValueOnSubscribe().Subscribe(n => UpdateBlend());
+        }
+
+        void BuildRectMaskSetting()
+        {
+            for (int i = 0; i < RectMaskSettingEntity.MAX_RECTMASKS; i++)
+            {
+                //NOTE:Escape for linq invoke timing.
+                var id = i;
+
+                //From model to view reactives (with initialize).
+                _rectMaskSettingEntity.RectMaskX[id].Subscribe(v => _rectMaskSettingView.rectMaskInputs[id].xInput.text = v.ToString());
+                _rectMaskSettingEntity.RectMaskY[id].Subscribe(v => _rectMaskSettingView.rectMaskInputs[id].yInput.text = v.ToString());
+                _rectMaskSettingEntity.RectMaskWidth[id].Subscribe(v => _rectMaskSettingView.rectMaskInputs[id].widthInput.text = v.ToString());
+                _rectMaskSettingEntity.RectMaskHeight[id].Subscribe(v => _rectMaskSettingView.rectMaskInputs[id].heightInput.text = v.ToString());
+
+                //From view to model reactives
+                _rectMaskSettingView.rectMaskInputs[id].xInput.OnValueChangedAsObservable().Subscribe(v => _rectMaskSettingEntity.RectMaskX[id].Value = (v == "" || v == null) ? 0 : float.Parse(v));
+                _rectMaskSettingView.rectMaskInputs[id].yInput.OnValueChangedAsObservable().Subscribe(v => _rectMaskSettingEntity.RectMaskY[id].Value = (v == "" || v == null) ? 0 : float.Parse(v));
+                _rectMaskSettingView.rectMaskInputs[id].widthInput.OnValueChangedAsObservable().Subscribe(v => _rectMaskSettingEntity.RectMaskWidth[id].Value = (v == "" || v == null) ? 0 : float.Parse(v));
+                _rectMaskSettingView.rectMaskInputs[id].heightInput.OnValueChangedAsObservable().Subscribe(v => _rectMaskSettingEntity.RectMaskHeight[id].Value = (v == "" || v == null) ? 0 : float.Parse(v));
+                _rectMaskSettingView.saveButton.OnClickAsObservable().Subscribe(_ => SaveRectMaskData());
+                _rectMaskSettingView.discardButton.OnClickAsObservable().Subscribe(_ => LoadRectMaskData());
+
+                //From model to core reactive (skip initialize).
+                _rectMaskSettingEntity.RectMaskX[id].SkipLatestValueOnSubscribe().Subscribe(v => UpdateMaskMesh());
+                _rectMaskSettingEntity.RectMaskY[id].SkipLatestValueOnSubscribe().Subscribe(v => UpdateMaskMesh());
+                _rectMaskSettingEntity.RectMaskWidth[id].SkipLatestValueOnSubscribe().Subscribe(v => UpdateMaskMesh());
+                _rectMaskSettingEntity.RectMaskHeight[id].SkipLatestValueOnSubscribe().Subscribe(v => UpdateMaskMesh());
+            }
         }
 
         /// <summary>
@@ -441,10 +524,10 @@ namespace ProjectorUtility.Controller
                     screenSettingEntity.bottomMask.SkipLatestValueOnSubscribe().Subscribe(v => UpdateBlend());
                     screenSettingEntity.leftMask.SkipLatestValueOnSubscribe().Subscribe(v => UpdateBlend());
                     screenSettingEntity.rightMask.SkipLatestValueOnSubscribe().Subscribe(v => UpdateBlend());
-                    screenSettingEntity.topLeftMask.SkipLatestValueOnSubscribe().Subscribe(v => UpdateBlend());
-                    screenSettingEntity.topRightMask.SkipLatestValueOnSubscribe().Subscribe(v => UpdateBlend());
-                    screenSettingEntity.bottomLeftMask.SkipLatestValueOnSubscribe().Subscribe(v => UpdateBlend());
-                    screenSettingEntity.bottomRightMask.SkipLatestValueOnSubscribe().Subscribe(v => UpdateBlend());
+                    screenSettingEntity.topLeftMask.SkipLatestValueOnSubscribe().Subscribe(v => UpdateMaskMesh());
+                    screenSettingEntity.topRightMask.SkipLatestValueOnSubscribe().Subscribe(v => UpdateMaskMesh());
+                    screenSettingEntity.bottomLeftMask.SkipLatestValueOnSubscribe().Subscribe(v => UpdateMaskMesh());
+                    screenSettingEntity.bottomRightMask.SkipLatestValueOnSubscribe().Subscribe(v => UpdateMaskMesh());
                     screenSettingEntity.uvShift.SkipLatestValueOnSubscribe().Subscribe(v => UpdateBlend());
 
                     _screenSettingEntities.Add(screenSettingEntity);
@@ -465,6 +548,7 @@ namespace ProjectorUtility.Controller
                 SetTabSystem();
             }
             UpdateBlend();
+            UpdateMaskMesh();
         }
 
         void CalculateNarrowestBlend()
@@ -505,8 +589,101 @@ namespace ProjectorUtility.Controller
         /// </summary>
         void UpdateBlend()
         {
-            _targetBlender.SetBuffer();
+            if (_computeBuffer != null)
+            {
+                _computeBuffer.Release();
+            }
+
+            _computeBuffer = new ComputeBuffer(NumOfScreen, Marshal.SizeOf(typeof(ProjectorUtilityBuffer)));
+            ProjectorUtilityBuffer[] buf = new ProjectorUtilityBuffer[_computeBuffer.count];
+
+            _screenSettingEntities.ForEach(entity =>
+            {
+                buf[entity.ID] = new ProjectorUtilityBuffer(
+                    (uint)entity.ID,
+                    entity.TopBlend.Value,
+                    entity.BottomBlend.Value,
+                    entity.LeftBlend.Value,
+                    entity.RightBlend.Value,
+                    entity.uvShift.Value.x,
+                    entity.uvShift.Value.y,
+                    entity.topMask.Value,
+                    entity.bottomMask.Value,
+                    entity.leftMask.Value,
+                    entity.rightMask.Value
+                    );
+            });
+
+            _computeBuffer.SetData(buf);
+
+            _mat.SetBuffer("buf", _computeBuffer);
+
+            _mat.SetInt("_numOfColPrjctrs", _commonSettingEntity.NumOfColProjectors.Value);
+            _mat.SetInt("_numOfRowPrjctrs", _commonSettingEntity.NumOfRowProjectors.Value);
+            _mat.SetFloat("_blackness", _commonSettingEntity.Blackness.Value);
+            _mat.SetFloat("_power", _commonSettingEntity.Curve.Value);
+            _mat.SetFloat("_brightness", _commonSettingEntity.Brightness.Value);
+
             CalculateNarrowestBlend();
+        }
+
+        void UpdateMaskMesh()
+        {
+            _maskingMeshes.Clear();
+            int colScreens = _commonSettingEntity.NumOfColProjectors.Value;
+            int rowScreens = _commonSettingEntity.NumOfRowProjectors.Value;
+            float hrztlLength = 1.0f / colScreens;
+            float vrtclLength = 1.0f / rowScreens;
+
+            _screenSettingEntities.ForEach(entity =>
+            {
+                var mesh = new Mesh();
+                var topLeftPos     = new Vector2(hrztlLength * ((float)entity.ID % (float)colScreens), 1.0f - vrtclLength * Mathf.Floor((float)entity.ID / (float)colScreens));
+                var topRightPos    = new Vector2(topLeftPos.x + hrztlLength, topLeftPos.y);
+                var bottomLeftPos  = new Vector2(topLeftPos.x, topLeftPos.y - vrtclLength);
+                var bottomRightPos = new Vector2(topLeftPos.x + hrztlLength, topLeftPos.y - vrtclLength);
+
+                mesh.vertices = new Vector3[]
+                {
+                    //top left corner
+                    _camera.ViewportToWorldPoint(new Vector3(topLeftPos.x, topLeftPos.y, _camera.nearClipPlane)),
+                    _camera.ViewportToWorldPoint(new Vector3(entity.topLeftMask.Value.x, topLeftPos.y, _camera.nearClipPlane)),
+                    _camera.ViewportToWorldPoint(new Vector3(topLeftPos.x, topLeftPos.y - entity.topLeftMask.Value.y, _camera.nearClipPlane)),
+                    //top right corner
+                    _camera.ViewportToWorldPoint(new Vector3(topRightPos.x - entity.topRightMask.Value.x, topRightPos.y, _camera.nearClipPlane)),
+                    _camera.ViewportToWorldPoint(new Vector3(topRightPos.x, topRightPos.y, _camera.nearClipPlane)),
+                    _camera.ViewportToWorldPoint(new Vector3(topRightPos.x, topRightPos.y - entity.topRightMask.Value.y, _camera.nearClipPlane)),
+                    //bottom left corner
+                    _camera.ViewportToWorldPoint(new Vector3(bottomLeftPos.x, bottomLeftPos.y + entity.bottomLeftMask.Value.y, _camera.nearClipPlane)),
+                    _camera.ViewportToWorldPoint(new Vector3(bottomLeftPos.x + entity.bottomLeftMask.Value.x, bottomLeftPos.y, _camera.nearClipPlane)),
+                    _camera.ViewportToWorldPoint(new Vector3(bottomLeftPos.x, bottomLeftPos.y, _camera.nearClipPlane)),
+                    //bottom right corner
+                    _camera.ViewportToWorldPoint(new Vector3(bottomRightPos.x, bottomRightPos.y + entity.bottomRightMask.Value.y, _camera.nearClipPlane)),
+                    _camera.ViewportToWorldPoint(new Vector3(bottomRightPos.x, bottomRightPos.y, _camera.nearClipPlane)),
+                    _camera.ViewportToWorldPoint(new Vector3(bottomRightPos.x - entity.bottomRightMask.Value.x, bottomRightPos.y, _camera.nearClipPlane))
+                };
+
+                mesh.SetIndices(new int[] { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11 }, MeshTopology.Triangles, 0);
+                _maskingMeshes.Add(mesh);
+            });
+
+            for (int i = 0; i < Model.RectMaskSettingEntity.MAX_RECTMASKS; i++)
+            {
+                if (_rectMaskSettingEntity.RectMaskWidth[i].Value == 0f || _rectMaskSettingEntity.RectMaskHeight[i].Value == 0f) continue;
+
+                Mesh mesh = new Mesh();
+                mesh.vertices = new Vector3[]
+                {
+                    _camera.ViewportToWorldPoint(new Vector3(_rectMaskSettingEntity.RectMaskX[i].Value, _rectMaskSettingEntity.RectMaskY[i].Value + _rectMaskSettingEntity.RectMaskHeight[i].Value, _camera.nearClipPlane)),
+                    _camera.ViewportToWorldPoint(new Vector3(_rectMaskSettingEntity.RectMaskX[i].Value + _rectMaskSettingEntity.RectMaskWidth[i].Value, _rectMaskSettingEntity.RectMaskY[i].Value + _rectMaskSettingEntity.RectMaskHeight[i].Value, _camera.nearClipPlane)),
+                    _camera.ViewportToWorldPoint(new Vector3(_rectMaskSettingEntity.RectMaskX[i].Value + _rectMaskSettingEntity.RectMaskWidth[i].Value, _rectMaskSettingEntity.RectMaskY[i].Value, _camera.nearClipPlane)),
+                    _camera.ViewportToWorldPoint(new Vector3(_rectMaskSettingEntity.RectMaskX[i].Value, _rectMaskSettingEntity.RectMaskY[i].Value, _camera.nearClipPlane)),
+                };
+                mesh.SetIndices(new int[] { 0, 1, 2, 0, 2, 3}, MeshTopology.Triangles, 0);
+                _maskingMeshes.Add(mesh);
+            }
+
+            _maskMesh = MeshUtility.BatchMesh(_maskingMeshes);
         }
 
         #endregion
@@ -515,21 +692,39 @@ namespace ProjectorUtility.Controller
         #region save and load
 
         /// <summary>
-        /// Save all data.
+        /// Save and close advance data.
         /// </summary>
-        public void SaveAllData()
+        public void SaveAdvanceData()
         {
             _screenSettingEntities.ForEach(s => s.Save());
             _commonSettingEntity.Save();
+            _advancedMode.modal.SetActive(false);
         }
 
         /// <summary>
-        /// Load all data.
+        /// Load advance data.
         /// </summary>
-        public void LoadAllData()
+        public void LoadAdvanceData()
         {
             _screenSettingEntities.ForEach(s => s.Load());
             _commonSettingEntity.Load();
+        }
+
+        /// <summary>
+        /// Save and close rect mask data.
+        /// </summary>
+        public void SaveRectMaskData()
+        {
+            _rectMaskSettingEntity.Save();
+            _rectMaskMode.modal.SetActive(false);
+        }
+
+        /// <summary>
+        /// Load rect mask data.
+        /// </summary>
+        public void LoadRectMaskData()
+        {
+            _rectMaskSettingEntity.Load();
         }
 
         #endregion
@@ -574,5 +769,122 @@ namespace ProjectorUtility.Controller
         }
 
         #endregion
-    } 
+
+
+        #region unity builtin
+
+        void OnDestroy()
+        {
+            if(_mat)
+            {
+                DestroyImmediate(_mat);
+            }
+            _computeBuffer.Release();
+        }
+
+        void OnRenderImage(RenderTexture src, RenderTexture dest)
+        {
+            if (_mat != null)
+            {
+                Graphics.Blit(src, dest, _mat, 0);
+            }
+        }
+
+        void OnPostRender()
+        {
+            if(_maskMesh != null)
+            {
+                _mat.SetPass(1);
+                Graphics.DrawMeshNow(_maskMesh, _camera.cameraToWorldMatrix);
+            }
+        }
+
+        void Start()
+        {
+            _keyViewModalSets.ForEach(e => e.modal.SetActive(false));
+        }
+
+        void Update()
+        {
+            for (int i = 0; i < _keyViewModalSets.Count; i++)
+            {
+                if (Input.GetKeyDown(_keyViewModalSets[i].key) == true)
+                {
+                    if (_keyViewModalSets[i].modal.activeSelf)
+                    {
+                        if (_keyViewModalSets[i].key == _advancedMode.key)
+                            LoadAdvanceData();
+                        else if (_keyViewModalSets[i].key == _rectMaskMode.key)
+                            LoadRectMaskData();
+
+                        _keyViewModalSets[i].modal.SetActive(false);
+                        break;
+                    }
+                    if (_keyViewModalSets.Any(set => set.modal.activeSelf)) break;
+                    _keyViewModalSets[i].modal.SetActive(true);
+                }
+            }
+        }
+
+        #endregion
+    }
+    
+
+    /// <summary>
+    /// Simple mesh utility
+    /// </summary>
+    public static class MeshUtility
+    {
+        /// <summary>
+        /// Simple mesh batcher
+        /// </summary>
+        /// <param name="meshes"></param>
+        /// <returns>batched mesh</returns>
+        public static Mesh BatchMesh(List<Mesh> meshes)
+        {
+            var mesh = new Mesh();
+
+            int totalVertices = 0;
+            int totalIndices  = 0;
+
+            Vector3[] batchedVertices;
+            int[]     batchedIndices;
+
+            if (meshes == null || meshes.Count == 0)
+            {
+                Debug.LogWarning("Mesh is null");
+                return mesh;
+            }
+
+            meshes.ForEach(m => {
+                totalVertices += m.vertexCount;
+                totalIndices  += m.GetIndices(0).Length;
+            });
+
+            batchedVertices = new Vector3[totalVertices];
+            batchedIndices  = new int[totalIndices];
+
+            for (int vertexOffset = 0, indexOffset = 0, i = 0; i < meshes.Count; i++)
+            {
+                var sourceMesh  = meshes[i];
+                var sourceIndex = sourceMesh.GetIndices(0);
+                System.Array.Copy(sourceMesh.vertices, 0, batchedVertices, vertexOffset, sourceMesh.vertices.Length);
+
+                for (int j = 0; j < sourceIndex.Length; j++)
+                {
+                    batchedIndices[indexOffset + j] = vertexOffset + sourceIndex[j];
+                }
+
+                vertexOffset += sourceMesh.vertexCount;
+                indexOffset  += sourceIndex.Length;
+            }
+
+            mesh.vertices = batchedVertices;
+            mesh.SetIndices(batchedIndices, MeshTopology.Triangles, 0);
+            mesh.Optimize();
+            mesh.hideFlags = HideFlags.DontSave;
+
+            return mesh;
+        }
+    }
 }
