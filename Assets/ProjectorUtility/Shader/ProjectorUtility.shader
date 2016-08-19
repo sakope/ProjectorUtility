@@ -110,7 +110,7 @@
     ENDCG
 
     SubShader {
-        Tags{ "RenderType" = "Opaque" "Queue" = "Overlay+99000" }
+        Tags{ "RenderType" = "Opaque" "Queue" = "Overlay" }
         ZTest Always Cull Off ZWrite Off
         Fog{ Mode off }
         ColorMask RGB

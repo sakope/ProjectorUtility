@@ -57,15 +57,16 @@ namespace ProjectorUtility.Controller
             public KeyCode    key;
             public GameObject modal;
         }
-        [SerializeField] Shader _shader;
-        [SerializeField] TabContentsSet          _commonTabContents;
-        [SerializeField] TabContentsSet          _screenTabContents;
-        [SerializeField] RectMaskSettingView     _rectMaskSettingView;
-        [SerializeField] Transform               _tabParent;
-        [SerializeField] Transform               _contentsParent;
-        //[SerializeField] KeyViewModalSet         _simpleMode;
-        [SerializeField] KeyViewModalSet         _advancedMode;
-        [SerializeField] KeyViewModalSet         _rectMaskMode;
+        [SerializeField] Shader              _shader;
+        [SerializeField] TabContentsSet      _commonTabContents;
+        [SerializeField] TabContentsSet      _screenTabContents;
+        [SerializeField] RectMaskSettingView _rectMaskSettingView;
+        [SerializeField] SimpleSettingView   _simpleSettingView;
+        [SerializeField] Transform           _tabParent;
+        [SerializeField] Transform           _contentsParent;
+        [SerializeField] KeyViewModalSet     _simpleMode;
+        [SerializeField] KeyViewModalSet     _advancedMode;
+        [SerializeField] KeyViewModalSet     _rectMaskMode;
 
         CommonSettingEntity       _commonSettingEntity;
         CommonSettingView         _commonSettingView;
@@ -345,7 +346,7 @@ namespace ProjectorUtility.Controller
             _mat = new Material(_shader);
             _camera = GetComponent<Camera>();
 
-            //_keyViewModalSets.Add(_simpleMode);
+            _keyViewModalSets.Add(_simpleMode);
             _keyViewModalSets.Add(_advancedMode);
             _keyViewModalSets.Add(_rectMaskMode);
 
@@ -358,6 +359,7 @@ namespace ProjectorUtility.Controller
             BuildCommonSetting();
             BuildRectMaskSetting();
             BuildScreenSetting();
+            BuildSimpleSetting();
             SetTabSystem();
 
             NormalizedMinUpperBlendHeight = 0f;
@@ -393,8 +395,8 @@ namespace ProjectorUtility.Controller
             _commonSettingView.brightnessUI.slider.OnValueChangedAsObservable().Subscribe(v => _commonSettingEntity.Brightness.Value = v);
             _commonSettingView.symmetryToggle.OnValueChangedAsObservable().Subscribe(v => _commonSettingEntity.Symmetry.Value = v);
             _commonSettingView.lerpedInputModeToggle.OnValueChangedAsObservable().Subscribe(v => _commonSettingEntity.LerpedInputMode.Value = v);
-            _commonSettingView.saveButton.OnClickAsObservable().Subscribe(_ => SaveAdvanceData());
-            _commonSettingView.discardButton.OnClickAsObservable().Subscribe(_ => LoadAdvanceData());
+            _commonSettingView.saveButton.OnClickAsObservable().Subscribe(_ => SaveAndCloseAdvancedMode());
+            _commonSettingView.discardButton.OnClickAsObservable().Subscribe(_ => DiscardAndCloseAdvancedMode());
             _commonSettingView.gammaButton.OnClickAsObservable().Subscribe(_ => _commonSettingEntity.Curve.Value = CommonSettingEntity.GAMMA_CURVE);
 
             //From model to core reactive (skip initialize).
@@ -423,8 +425,8 @@ namespace ProjectorUtility.Controller
                 _rectMaskSettingView.rectMaskInputs[id].yInput.OnValueChangedAsObservable().Subscribe(v => _rectMaskSettingEntity.RectMaskY[id].Value = (v == "" || v == null) ? 0 : float.Parse(v));
                 _rectMaskSettingView.rectMaskInputs[id].widthInput.OnValueChangedAsObservable().Subscribe(v => _rectMaskSettingEntity.RectMaskWidth[id].Value = (v == "" || v == null) ? 0 : float.Parse(v));
                 _rectMaskSettingView.rectMaskInputs[id].heightInput.OnValueChangedAsObservable().Subscribe(v => _rectMaskSettingEntity.RectMaskHeight[id].Value = (v == "" || v == null) ? 0 : float.Parse(v));
-                _rectMaskSettingView.saveButton.OnClickAsObservable().Subscribe(_ => SaveRectMaskData());
-                _rectMaskSettingView.discardButton.OnClickAsObservable().Subscribe(_ => LoadRectMaskData());
+                _rectMaskSettingView.saveButton.OnClickAsObservable().Subscribe(_ => SaveAndCloseRectMaskMode());
+                _rectMaskSettingView.discardButton.OnClickAsObservable().Subscribe(_ => DiscardAndCloseRectMaskMode());
 
                 //From model to core reactive (skip initialize).
                 _rectMaskSettingEntity.RectMaskX[id].SkipLatestValueOnSubscribe().Subscribe(v => UpdateMaskMesh());
@@ -549,6 +551,26 @@ namespace ProjectorUtility.Controller
             }
             UpdateBlend();
             UpdateMaskMesh();
+        }
+
+        void BuildSimpleSetting()
+        {
+            //From view to model reactives
+            _simpleSettingView.twoProjectionToggle.OnValueChangedAsObservable().Subscribe(v => {
+                _commonSettingEntity.NumOfRowProjectors.Value = 1;
+                _commonSettingEntity.NumOfColProjectors.Value = (v) ? 2 : 3;
+            });
+            _simpleSettingView.blendWidthUI.slider.OnValueChangedAsObservable().Subscribe(v => {
+                for (int i = 0; i < (_colScreens - 1); i++)
+                {
+                    _screenSettingEntities[i].RightBlend.Value = v;
+                }
+            });
+            _simpleSettingView.blendCurveUI.slider.OnValueChangedAsObservable().Subscribe(v => _commonSettingEntity.Curve.Value = v);
+            _simpleSettingView.blendOffsetUI.slider.OnValueChangedAsObservable().Subscribe(v => _commonSettingEntity.Blackness.Value = v);
+            _simpleSettingView.blendAlphaUI.slider.OnValueChangedAsObservable().Subscribe(v => _commonSettingEntity.Brightness.Value = v);
+            _simpleSettingView.saveButton.OnClickAsObservable().Subscribe(_ => SaveAndCloseSimpleMode());
+            _simpleSettingView.discardButton.OnClickAsObservable().Subscribe(_ => DiscardAndCloseSimpleMode());
         }
 
         void CalculateNarrowestBlend()
@@ -692,9 +714,9 @@ namespace ProjectorUtility.Controller
         #region save and load
 
         /// <summary>
-        /// Save and close advance data.
+        /// Advance mode save and close.
         /// </summary>
-        public void SaveAdvanceData()
+        public void SaveAndCloseAdvancedMode()
         {
             _screenSettingEntities.ForEach(s => s.Save());
             _commonSettingEntity.Save();
@@ -702,29 +724,51 @@ namespace ProjectorUtility.Controller
         }
 
         /// <summary>
-        /// Load advance data.
+        /// Advance mode load and close.
         /// </summary>
-        public void LoadAdvanceData()
+        public void DiscardAndCloseAdvancedMode()
         {
             _screenSettingEntities.ForEach(s => s.Load());
             _commonSettingEntity.Load();
+            _advancedMode.modal.SetActive(false);
         }
 
         /// <summary>
-        /// Save and close rect mask data.
+        /// Advance mode save and close.
         /// </summary>
-        public void SaveRectMaskData()
+        public void SaveAndCloseSimpleMode()
+        {
+            _screenSettingEntities.ForEach(s => s.Save());
+            _commonSettingEntity.Save();
+            _simpleMode.modal.SetActive(false);
+        }
+
+        /// <summary>
+        /// Advance mode load and close.
+        /// </summary>
+        public void DiscardAndCloseSimpleMode()
+        {
+            _screenSettingEntities.ForEach(s => s.Load());
+            _commonSettingEntity.Load();
+            _simpleMode.modal.SetActive(false);
+        }
+
+        /// <summary>
+        /// Rect mask mode save and close.
+        /// </summary>
+        public void SaveAndCloseRectMaskMode()
         {
             _rectMaskSettingEntity.Save();
             _rectMaskMode.modal.SetActive(false);
         }
 
         /// <summary>
-        /// Load rect mask data.
+        /// Rect mask mode load and close.
         /// </summary>
-        public void LoadRectMaskData()
+        public void DiscardAndCloseRectMaskMode()
         {
             _rectMaskSettingEntity.Load();
+            _rectMaskMode.modal.SetActive(false);
         }
 
         #endregion
@@ -771,6 +815,44 @@ namespace ProjectorUtility.Controller
         #endregion
 
 
+        #region simple mode
+
+        /// <summary>
+        /// Convert common and screen setting entity to simple view
+        /// </summary>
+        void ConvertAdvanceEntityToFitSimpleView()
+        {
+            _commonSettingEntity.NumOfRowProjectors.Value = 1;
+            if (_commonSettingEntity.NumOfColProjectors.Value == 3)
+            {
+                _simpleSettingView.twoProjectionToggle.isOn = false;
+                _commonSettingEntity.NumOfColProjectors.Value = 3;
+                _screenSettingEntities[0].LeftBlend.Value  = 0;
+                _screenSettingEntities[2].RightBlend.Value = 0;
+            }
+            else
+            {
+                _simpleSettingView.twoProjectionToggle.isOn = true;
+                _commonSettingEntity.NumOfColProjectors.Value = 2;
+                _screenSettingEntities[0].LeftBlend.Value  = 0;
+                _screenSettingEntities[1].RightBlend.Value = 0;
+            }
+            _screenSettingEntities.ForEach(s => {
+                s.topLeftMask.Value     = Vector2.zero;
+                s.topRightMask.Value    = Vector2.zero;
+                s.bottomLeftMask.Value  = Vector2.zero;
+                s.bottomRightMask.Value = Vector2.zero;
+            });
+            _commonSettingEntity.Symmetry.Value = true;
+            _simpleSettingView.blendWidthUI.SetVal(_screenSettingEntities[0].RightBlend.Value);
+            _simpleSettingView.blendCurveUI.SetVal(_commonSettingEntity.Curve.Value);
+            _simpleSettingView.blendAlphaUI.SetVal(_commonSettingEntity.Brightness.Value);
+            _simpleSettingView.blendOffsetUI.SetVal(_commonSettingEntity.Blackness.Value);
+        }
+
+        #endregion
+
+
         #region unity builtin
 
         void OnDestroy()
@@ -806,6 +888,8 @@ namespace ProjectorUtility.Controller
 
         void Update()
         {
+            if (!Input.anyKey) return;
+
             for (int i = 0; i < _keyViewModalSets.Count; i++)
             {
                 if (Input.GetKeyDown(_keyViewModalSets[i].key) == true)
@@ -813,15 +897,16 @@ namespace ProjectorUtility.Controller
                     if (_keyViewModalSets[i].modal.activeSelf)
                     {
                         if (_keyViewModalSets[i].key == _advancedMode.key)
-                            LoadAdvanceData();
+                            DiscardAndCloseAdvancedMode();
                         else if (_keyViewModalSets[i].key == _rectMaskMode.key)
-                            LoadRectMaskData();
-
-                        _keyViewModalSets[i].modal.SetActive(false);
+                            DiscardAndCloseRectMaskMode();
+                        else if (_keyViewModalSets[i].key == _simpleMode.key)
+                            DiscardAndCloseSimpleMode();
                         break;
                     }
                     if (_keyViewModalSets.Any(set => set.modal.activeSelf)) break;
                     _keyViewModalSets[i].modal.SetActive(true);
+                    if (_keyViewModalSets[i].key == _simpleMode.key) ConvertAdvanceEntityToFitSimpleView();
                 }
             }
         }
@@ -868,7 +953,7 @@ namespace ProjectorUtility.Controller
             {
                 var sourceMesh  = meshes[i];
                 var sourceIndex = sourceMesh.GetIndices(0);
-                System.Array.Copy(sourceMesh.vertices, 0, batchedVertices, vertexOffset, sourceMesh.vertices.Length);
+                Array.Copy(sourceMesh.vertices, 0, batchedVertices, vertexOffset, sourceMesh.vertices.Length);
 
                 for (int j = 0; j < sourceIndex.Length; j++)
                 {
