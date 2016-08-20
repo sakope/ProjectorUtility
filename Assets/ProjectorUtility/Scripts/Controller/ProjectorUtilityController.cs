@@ -388,8 +388,8 @@ namespace ProjectorUtility.Controller
             _commonSettingEntity.LerpedInputMode.Subscribe(v => _commonSettingView.lerpedInputModeToggle.isOn = v);
 
             //From view to model reactives
-            _commonSettingView.numOfCol.OnValueChangedAsObservable().Where(s => int.Parse(s) < MAX_COL).Subscribe(s => _commonSettingEntity.NumOfColProjectors.Value = int.Parse(s));
-            _commonSettingView.numOfRow.OnValueChangedAsObservable().Where(s => int.Parse(s) < MAX_ROW).Subscribe(s => _commonSettingEntity.NumOfRowProjectors.Value = int.Parse(s));
+            _commonSettingView.numOfCol.OnValueChangedAsObservable().Subscribe(s => { int val; _commonSettingEntity.NumOfColProjectors.Value = int.TryParse(s, out val) ? Mathf.Clamp(val, 1, MAX_COL) : 1; });
+            _commonSettingView.numOfRow.OnValueChangedAsObservable().Subscribe(s => { int val; _commonSettingEntity.NumOfRowProjectors.Value = int.TryParse(s, out val) ? Mathf.Clamp(val, 1, MAX_ROW) : 1; });
             _commonSettingView.blacknessUI.slider.OnValueChangedAsObservable().Subscribe(v => _commonSettingEntity.Blackness.Value = v);
             _commonSettingView.curveUI.slider.OnValueChangedAsObservable().Subscribe(v => _commonSettingEntity.Curve.Value = v);
             _commonSettingView.brightnessUI.slider.OnValueChangedAsObservable().Subscribe(v => _commonSettingEntity.Brightness.Value = v);
@@ -407,6 +407,9 @@ namespace ProjectorUtility.Controller
             _commonSettingEntity.Brightness.SkipLatestValueOnSubscribe().Subscribe(n => UpdateBlend());
         }
 
+        /// <summary>
+        /// Build rect mask setting views, models and connect view <-> model reactives.
+        /// </summary>
         void BuildRectMaskSetting()
         {
             for (int i = 0; i < RectMaskSettingEntity.MAX_RECTMASKS; i++)
@@ -550,20 +553,38 @@ namespace ProjectorUtility.Controller
                 SetTabSystem();
             }
             UpdateBlend();
-            UpdateMaskMesh();
+            //NOTE: If game view is free aspect, viewport coord is not currect when awake frame. so, wait 1 frame.
+            Observable.NextFrame().Subscribe(_ => UpdateMaskMesh());
         }
 
+        /// <summary>
+        /// Build simple setting view and connect view <-> model reactives.
+        /// </summary>
         void BuildSimpleSetting()
         {
+            //From model to view reactives
+            _screenSettingEntities[0].RightBlend.Subscribe(v => _simpleSettingView.blendWidthUI.SetVal(v));
+            _commonSettingEntity.Blackness.Subscribe(v => _simpleSettingView.blendOffsetUI.SetVal(v));
+            _commonSettingEntity.Curve.Subscribe(v => _simpleSettingView.blendCurveUI.SetVal(v));
+            _commonSettingEntity.Brightness.Subscribe(v => _simpleSettingView.blendAlphaUI.SetVal(v));
+
             //From view to model reactives
             _simpleSettingView.twoProjectionToggle.OnValueChangedAsObservable().Subscribe(v => {
-                _commonSettingEntity.NumOfRowProjectors.Value = 1;
-                _commonSettingEntity.NumOfColProjectors.Value = (v) ? 2 : 3;
+                if (_simpleMode.modal.activeSelf)
+                {
+                    _commonSettingEntity.NumOfRowProjectors.Value = 1;
+                    _commonSettingEntity.NumOfColProjectors.Value = (v) ? 2 : 3;
+                    if (v && _screenSettingEntities.Count == 2) _screenSettingEntities[1].RightBlend.Value = 0;
+                    if (!v && _screenSettingEntities.Count == 3) _screenSettingEntities[1].RightBlend.Value = _screenSettingEntities[0].RightBlend.Value;
+                }
             });
             _simpleSettingView.blendWidthUI.slider.OnValueChangedAsObservable().Subscribe(v => {
-                for (int i = 0; i < (_colScreens - 1); i++)
+                if (_simpleMode.modal.activeSelf)
                 {
-                    _screenSettingEntities[i].RightBlend.Value = v;
+                    for (int i = 0; i < (_colScreens - 1); i++)
+                    {
+                        _screenSettingEntities[i].RightBlend.Value = v;
+                    }
                 }
             });
             _simpleSettingView.blendCurveUI.slider.OnValueChangedAsObservable().Subscribe(v => _commonSettingEntity.Curve.Value = v);
@@ -648,7 +669,10 @@ namespace ProjectorUtility.Controller
 
             CalculateNarrowestBlend();
         }
-
+        
+        /// <summary>
+        /// Update corner and rect mask meshes.
+        /// </summary>
         void UpdateMaskMesh()
         {
             _maskingMeshes.Clear();
@@ -669,7 +693,7 @@ namespace ProjectorUtility.Controller
                 {
                     //top left corner
                     _camera.ViewportToWorldPoint(new Vector3(topLeftPos.x, topLeftPos.y, _camera.nearClipPlane)),
-                    _camera.ViewportToWorldPoint(new Vector3(entity.topLeftMask.Value.x, topLeftPos.y, _camera.nearClipPlane)),
+                    _camera.ViewportToWorldPoint(new Vector3(topLeftPos.x + entity.topLeftMask.Value.x, topLeftPos.y, _camera.nearClipPlane)),
                     _camera.ViewportToWorldPoint(new Vector3(topLeftPos.x, topLeftPos.y - entity.topLeftMask.Value.y, _camera.nearClipPlane)),
                     //top right corner
                     _camera.ViewportToWorldPoint(new Vector3(topRightPos.x - entity.topRightMask.Value.x, topRightPos.y, _camera.nearClipPlane)),
@@ -842,12 +866,10 @@ namespace ProjectorUtility.Controller
                 s.topRightMask.Value    = Vector2.zero;
                 s.bottomLeftMask.Value  = Vector2.zero;
                 s.bottomRightMask.Value = Vector2.zero;
+                s.TopBlend.Value        = 0f;
+                s.BottomBlend.Value     = 0f;
             });
             _commonSettingEntity.Symmetry.Value = true;
-            _simpleSettingView.blendWidthUI.SetVal(_screenSettingEntities[0].RightBlend.Value);
-            _simpleSettingView.blendCurveUI.SetVal(_commonSettingEntity.Curve.Value);
-            _simpleSettingView.blendAlphaUI.SetVal(_commonSettingEntity.Brightness.Value);
-            _simpleSettingView.blendOffsetUI.SetVal(_commonSettingEntity.Blackness.Value);
         }
 
         #endregion

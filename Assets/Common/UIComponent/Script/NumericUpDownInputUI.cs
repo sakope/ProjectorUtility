@@ -14,6 +14,7 @@ namespace UIComponent
         void Awake()
         {
             inputField = GetComponent<InputField>();
+            inputField.onValueChanged.AddListener(new UnityEngine.Events.UnityAction<string>(s => { if (s == "" || s == null) inputField.text = "0"; }));
         }
 
         void Update()

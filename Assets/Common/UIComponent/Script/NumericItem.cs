@@ -18,7 +18,7 @@ namespace UIComponent
         }
         public void OnValueChangedHandller (Action<int> handller)
         {
-            inputField.onValueChange.AddListener(e => OnValueChanged(e, handller));
+            inputField.onValueChanged.AddListener(e => OnValueChanged(e, handller));
         }
         private void OnValueChanged (string maxCount, Action<int> handller)
         {

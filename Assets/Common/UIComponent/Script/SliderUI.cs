@@ -19,6 +19,7 @@ namespace UIComponent
 		}
 		public void InputFieldOnValueChaged()
 		{
+			if (inputField.text == "" || inputField.text == null) inputField.text = "0";
 			slider.value = float.Parse (inputField.text);
 		}
 		public void SetVal(float val)
