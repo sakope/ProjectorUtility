@@ -57,19 +57,22 @@ namespace ProjectorUtility.Controller
             public KeyCode    key;
             public GameObject modal;
         }
-        [SerializeField] Shader              _shader;
-        [SerializeField] TabContentsSet      _commonTabContents;
-        [SerializeField] TabContentsSet      _screenTabContents;
-        [SerializeField] RectMaskSettingView _rectMaskSettingView;
-        [SerializeField] SimpleSettingView   _simpleSettingView;
-        [SerializeField] Transform           _tabParent;
-        [SerializeField] Transform           _contentsParent;
-        [SerializeField] KeyViewModalSet     _simpleMode;
-        [SerializeField] KeyViewModalSet     _advancedMode;
-        [SerializeField] KeyViewModalSet     _rectMaskMode;
+        [SerializeField] Shader                _shader;
+        [SerializeField] TabContentsSet        _commonTabContents;
+        [SerializeField] TabContentsSet        _screenTabContents;
+        [SerializeField] SimpleSettingView     _simpleSettingView;
+        [SerializeField] GlobalMaskSettingView _globalMaskSettingView;
+        [SerializeField] RectMaskSettingView   _rectMaskSettingView;
+        [SerializeField] Transform             _tabParent;
+        [SerializeField] Transform             _contentsParent;
+        [SerializeField] KeyViewModalSet       _simpleMode;
+        [SerializeField] KeyViewModalSet       _advancedMode;
+        [SerializeField] KeyViewModalSet       _globalMaskMode;
+        [SerializeField] KeyViewModalSet       _rectMaskMode;
 
         CommonSettingEntity       _commonSettingEntity;
         CommonSettingView         _commonSettingView;
+        GlobalMaskSettingEntity   _globalMaskSettingEntity;
         RectMaskSettingEntity     _rectMaskSettingEntity;
         List<ScreenSettingEntity> _screenSettingEntities = new List<ScreenSettingEntity>();
         List<ScreenSettingView>   _screenSettingViews    = new List<ScreenSettingView>();
@@ -83,6 +86,7 @@ namespace ProjectorUtility.Controller
         List<Mesh>    _maskingMeshes = new List<Mesh>();
 
         int _colScreens, _rowScreens;
+        bool _upArrow, _downArrow, _rightArrow, _leftArrow, _gMaskModeTop, _gMaskModeBtm, _gMaskModeLft, _gMaskModeRgt;
 
         const int MAX_COL = 30;
         const int MAX_ROW = 30;
@@ -96,6 +100,15 @@ namespace ProjectorUtility.Controller
         public float NormalizedMinLowerBlendHeight { get; private set; }
         public float NormalizedMinLeftBlendWidth   { get; private set; }
         public float NormalizedMinRightBlendWidth  { get; private set; }
+        
+        /// <summary> Gloabl top mask value (screen size). </summary>
+        public float GlobalTopMaskValue { get { return _globalMaskSettingEntity.TopMask.Value * 0.5f; } }
+        /// <summary> Gloabl bottom mask value (screen size). </summary>
+        public float GlobalBottomMaskValue { get { return _globalMaskSettingEntity.BottomMask.Value * 0.5f; } }
+        /// <summary> Gloabl left mask value (screen size). </summary>
+        public float GlobalLeftMaskValue { get { return _globalMaskSettingEntity.LeftMask.Value * 0.5f; } }
+        /// <summary> Gloabl right mask value (screen size). </summary>
+        public float GlobalRightMaskValue { get { return _globalMaskSettingEntity.RightMask.Value * 0.5f; } }
         
         #endregion
 
@@ -348,16 +361,19 @@ namespace ProjectorUtility.Controller
 
             _keyViewModalSets.Add(_simpleMode);
             _keyViewModalSets.Add(_advancedMode);
+            _keyViewModalSets.Add(_globalMaskMode);
             _keyViewModalSets.Add(_rectMaskMode);
 
-            _commonSettingEntity   = new CommonSettingEntity();
-            _commonSettingView     = _commonTabContents.contents.GetComponent<CommonSettingView>();
-            _rectMaskSettingEntity = new RectMaskSettingEntity();
+            _commonSettingEntity     = new CommonSettingEntity();
+            _commonSettingView       = _commonTabContents.contents.GetComponent<CommonSettingView>();
+            _globalMaskSettingEntity = new GlobalMaskSettingEntity();
+            _rectMaskSettingEntity   = new RectMaskSettingEntity();
 
             _tabs.Add(_commonTabContents);
 
             BuildCommonSetting();
             BuildRectMaskSetting();
+            BuildGlobalMaskSetting();
             BuildScreenSetting();
             BuildSimpleSetting();
             SetTabSystem();
@@ -405,6 +421,29 @@ namespace ProjectorUtility.Controller
             _commonSettingEntity.Blackness.SkipLatestValueOnSubscribe().Subscribe(n => UpdateBlend());
             _commonSettingEntity.Curve.SkipLatestValueOnSubscribe().Subscribe(n => UpdateBlend());
             _commonSettingEntity.Brightness.SkipLatestValueOnSubscribe().Subscribe(n => UpdateBlend());
+        }
+
+        /// <summary>
+        /// Build global mask. It is using uGUI images to mask edges.
+        /// </summary>
+        void BuildGlobalMaskSetting()
+        {
+            _globalMaskSettingView.maskRoot.SetActive(true);
+            _globalMaskSettingView.topMaskImage.gameObject.SetActive(true);
+            _globalMaskSettingView.bottomMaskImage.gameObject.SetActive(true);
+            _globalMaskSettingView.leftMaskImage.gameObject.SetActive(true);
+            _globalMaskSettingView.rightMaskImage.gameObject.SetActive(true);
+
+            //From model to view reactives
+            _globalMaskSettingEntity.TopMask.Subscribe(v => _globalMaskSettingView.topMaskImage.rectTransform.sizeDelta = new Vector2(_globalMaskSettingView.topMaskImage.rectTransform.sizeDelta.x, v));
+            _globalMaskSettingEntity.BottomMask.Subscribe(v => _globalMaskSettingView.bottomMaskImage.rectTransform.sizeDelta = new Vector2(_globalMaskSettingView.bottomMaskImage.rectTransform.sizeDelta.x, v));
+            _globalMaskSettingEntity.LeftMask.Subscribe(v => _globalMaskSettingView.leftMaskImage.rectTransform.sizeDelta = new Vector2(v, _globalMaskSettingView.leftMaskImage.rectTransform.sizeDelta.y));
+            _globalMaskSettingEntity.RightMask.Subscribe(v => _globalMaskSettingView.rightMaskImage.rectTransform.sizeDelta = new Vector2(v, _globalMaskSettingView.rightMaskImage.rectTransform.sizeDelta.y));
+
+            //User action handler
+            Observable.EveryUpdate().Where(_ => Input.anyKey).Subscribe(_ => {
+                if (_globalMaskMode.modal.activeSelf) ResizeGlobalMaskByKey();
+            });
         }
 
         /// <summary>
@@ -557,7 +596,7 @@ namespace ProjectorUtility.Controller
             Observable.NextFrame().Subscribe(_ => UpdateMaskMesh());
         }
 
-        /// <summary>
+        /// <summary>   
         /// Build simple setting view and connect view <-> model reactives.
         /// </summary>
         void BuildSimpleSetting()
@@ -732,6 +771,98 @@ namespace ProjectorUtility.Controller
             _maskMesh = MeshUtility.BatchMesh(_maskingMeshes);
         }
 
+        /// <summary>
+        /// Resize global masking ui objects by key input
+        /// </summary>
+        void ResizeGlobalMaskByKey()
+        {
+            if (Input.GetKeyDown(KeyCode.Alpha1))
+            {
+                ResetGlobalMaskEditMode();
+                _gMaskModeTop = true;
+                _globalMaskSettingView.topMaskImage.color = Color.red;
+            }
+			if (Input.GetKeyDown(KeyCode.Alpha2))
+			{
+				ResetGlobalMaskEditMode();
+				_gMaskModeBtm = true;
+				_globalMaskSettingView.bottomMaskImage.color = Color.red;
+			}
+			if (Input.GetKeyDown(KeyCode.Alpha3))
+			{
+				ResetGlobalMaskEditMode();
+				_gMaskModeRgt = true;
+				_globalMaskSettingView.rightMaskImage.color = Color.red;
+			}
+			if (Input.GetKeyDown(KeyCode.Alpha4))
+			{
+				ResetGlobalMaskEditMode();
+				_gMaskModeLft = true;
+				_globalMaskSettingView.leftMaskImage.color = Color.red;
+			}
+
+            if (_gMaskModeTop)
+            {
+                if (Input.GetKey(KeyCode.UpArrow))
+                {
+                    _globalMaskSettingEntity.TopMask.Value -= 1.0f;
+                    if (_globalMaskSettingEntity.TopMask.Value < 0) _globalMaskSettingEntity.TopMask.Value = 0f;
+                }
+                if (Input.GetKey(KeyCode.DownArrow))
+                {
+                    _globalMaskSettingEntity.TopMask.Value += 1.0f;
+                }
+            }
+            if (_gMaskModeBtm)
+            {
+                if (Input.GetKey(KeyCode.UpArrow))
+                {
+                    _globalMaskSettingEntity.BottomMask.Value += 1.0f;
+                }
+                if (Input.GetKey(KeyCode.DownArrow))
+                {
+                    _globalMaskSettingEntity.BottomMask.Value -= 1.0f;
+                    if (_globalMaskSettingEntity.BottomMask.Value < 0) _globalMaskSettingEntity.BottomMask.Value = 0f;
+                }
+            }
+            if (_gMaskModeRgt)
+            {
+                if (Input.GetKey(KeyCode.RightArrow))
+                {
+                    _globalMaskSettingEntity.RightMask.Value -= 1.0f;
+                    if (_globalMaskSettingEntity.RightMask.Value < 0) _globalMaskSettingEntity.RightMask.Value = 0f;
+                }
+                if (Input.GetKey(KeyCode.LeftArrow))
+                {
+                    _globalMaskSettingEntity.RightMask.Value += 1.0f;
+                }
+            }
+            if (_gMaskModeLft)
+            {
+                if (Input.GetKey(KeyCode.RightArrow))
+                {
+                    _globalMaskSettingEntity.LeftMask.Value += 1.0f;
+                }
+                if (Input.GetKey(KeyCode.LeftArrow))
+                {
+                    _globalMaskSettingEntity.LeftMask.Value -= 1.0f;
+                    if (_globalMaskSettingEntity.LeftMask.Value < 0) _globalMaskSettingEntity.LeftMask.Value = 0f;
+                }
+            }
+        }   
+
+        /// <summary>
+        /// Reset edit mode of global masking ui object
+        /// </summary>
+        void ResetGlobalMaskEditMode()
+        {
+            _gMaskModeTop = _gMaskModeBtm = _gMaskModeLft = _gMaskModeRgt = false;
+            _globalMaskSettingView.topMaskImage.color    = Color.black;
+            _globalMaskSettingView.bottomMaskImage.color = Color.black;
+            _globalMaskSettingView.leftMaskImage.color   = Color.black;
+            _globalMaskSettingView.rightMaskImage.color  = Color.black;
+        }
+
         #endregion
 
 
@@ -775,6 +906,26 @@ namespace ProjectorUtility.Controller
             _screenSettingEntities.ForEach(s => s.Load());
             _commonSettingEntity.Load();
             _simpleMode.modal.SetActive(false);
+        }
+
+        /// <summary>
+        /// Global mask mode save and close.
+        /// </summary>
+        public void SaveAndCloseGlobalMaskMode()
+        {
+            ResetGlobalMaskEditMode();
+            _globalMaskSettingEntity.Save();
+            _globalMaskMode.modal.SetActive(false);
+        }
+
+        /// <summary>
+        /// Global mask mode load and close.
+        /// </summary>
+        public void DiscardAndCloseGlobalMaskMode()
+        {
+            ResetGlobalMaskEditMode();
+            _globalMaskSettingEntity.Load();
+            _globalMaskMode.modal.SetActive(false);
         }
 
         /// <summary>
@@ -846,12 +997,14 @@ namespace ProjectorUtility.Controller
         /// </summary>
         void ConvertAdvanceEntityToFitSimpleView()
         {
+            _commonSettingEntity.Symmetry.Value = true;
             _commonSettingEntity.NumOfRowProjectors.Value = 1;
             if (_commonSettingEntity.NumOfColProjectors.Value == 3)
             {
                 _simpleSettingView.twoProjectionToggle.isOn = false;
                 _commonSettingEntity.NumOfColProjectors.Value = 3;
                 _screenSettingEntities[0].LeftBlend.Value  = 0;
+                _screenSettingEntities[2].LeftBlend.Value  = _screenSettingEntities[1].RightBlend.Value;
                 _screenSettingEntities[2].RightBlend.Value = 0;
             }
             else
@@ -859,6 +1012,7 @@ namespace ProjectorUtility.Controller
                 _simpleSettingView.twoProjectionToggle.isOn = true;
                 _commonSettingEntity.NumOfColProjectors.Value = 2;
                 _screenSettingEntities[0].LeftBlend.Value  = 0;
+                _screenSettingEntities[1].LeftBlend.Value  = _screenSettingEntities[0].RightBlend.Value;
                 _screenSettingEntities[1].RightBlend.Value = 0;
             }
             _screenSettingEntities.ForEach(s => {
@@ -869,7 +1023,6 @@ namespace ProjectorUtility.Controller
                 s.TopBlend.Value        = 0f;
                 s.BottomBlend.Value     = 0f;
             });
-            _commonSettingEntity.Symmetry.Value = true;
         }
 
         #endregion
@@ -924,11 +1077,14 @@ namespace ProjectorUtility.Controller
                             DiscardAndCloseRectMaskMode();
                         else if (_keyViewModalSets[i].key == _simpleMode.key)
                             DiscardAndCloseSimpleMode();
+                        else if (_keyViewModalSets[i].key == _globalMaskMode.key)
+                            SaveAndCloseGlobalMaskMode();
                         break;
                     }
                     if (_keyViewModalSets.Any(set => set.modal.activeSelf)) break;
                     _keyViewModalSets[i].modal.SetActive(true);
                     if (_keyViewModalSets[i].key == _simpleMode.key) ConvertAdvanceEntityToFitSimpleView();
+                    if (_keyViewModalSets[i].key == _globalMaskMode.key) ResetGlobalMaskEditMode();
                 }
             }
         }
