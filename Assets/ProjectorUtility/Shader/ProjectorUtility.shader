@@ -88,7 +88,7 @@
         //blackness.
         col = saturate(1.0 - (1.0 - col) * _blackness);
         //blend curve.
-        col = pow(col, _power);
+        col = pow(col, 1 / _power);
         //blending area brightness.
         col = lerp(col, col * _brightness, (col < 1.0));
 

@@ -25,7 +25,7 @@
         string _symmetry               = "symmetry";
         string _lerpedInputModeProp    = "sensorMode";
 
-        public const float GAMMA_CURVE = 0.4545454f;
+        public const float GAMMA_CURVE = 2.2f;
 
         public const string XMLAggregationKey = "Blending";
 
