@@ -109,7 +109,27 @@ namespace ProjectorUtility.Controller
         public float GlobalLeftMaskValue { get { return _globalMaskSettingEntity.LeftMask.Value * 0.5f; } }
         /// <summary> Gloabl right mask value (screen size). </summary>
         public float GlobalRightMaskValue { get { return _globalMaskSettingEntity.RightMask.Value * 0.5f; } }
-        
+
+        #endregion
+
+        #region callbacks
+
+        public event Action OnShowAdvancedMode;
+        public event Action OnSaveAndCloseAdvancedMode;
+        public event Action OnDiscardAndCloseAdvancedMode;
+
+        public event Action OnShowSimpleMode;
+        public event Action OnSaveAndCloseSimpleMode;
+        public event Action OnDiscardAndCloseSimpleMode;
+
+        public event Action OnShowRectMaskMode;
+        public event Action OnSaveAndCloseRectMaskMode;
+        public event Action OnDiscardAndCloseRectMaskMode;
+
+        public event Action OnShowGlobalMaskMode;
+        public event Action OnSaveAndCloseGlobalMaskMode;
+        public event Action OnDiscardAndCloseGlobalMaskMode;
+
         #endregion
 
 
@@ -875,6 +895,7 @@ namespace ProjectorUtility.Controller
         {
             _screenSettingEntities.ForEach(s => s.Save());
             _commonSettingEntity.Save();
+            if (OnSaveAndCloseAdvancedMode != null) OnSaveAndCloseAdvancedMode();
             _advancedMode.modal.SetActive(false);
         }
 
@@ -885,6 +906,7 @@ namespace ProjectorUtility.Controller
         {
             _screenSettingEntities.ForEach(s => s.Load());
             _commonSettingEntity.Load();
+            if (OnDiscardAndCloseAdvancedMode != null) OnDiscardAndCloseAdvancedMode();
             _advancedMode.modal.SetActive(false);
         }
 
@@ -895,6 +917,7 @@ namespace ProjectorUtility.Controller
         {
             _screenSettingEntities.ForEach(s => s.Save());
             _commonSettingEntity.Save();
+            if (OnSaveAndCloseSimpleMode != null) OnSaveAndCloseSimpleMode();
             _simpleMode.modal.SetActive(false);
         }
 
@@ -905,6 +928,7 @@ namespace ProjectorUtility.Controller
         {
             _screenSettingEntities.ForEach(s => s.Load());
             _commonSettingEntity.Load();
+            if (OnDiscardAndCloseSimpleMode != null) OnDiscardAndCloseSimpleMode();
             _simpleMode.modal.SetActive(false);
         }
 
@@ -915,6 +939,7 @@ namespace ProjectorUtility.Controller
         {
             ResetGlobalMaskEditMode();
             _globalMaskSettingEntity.Save();
+            if (OnSaveAndCloseGlobalMaskMode != null) OnSaveAndCloseGlobalMaskMode();
             _globalMaskMode.modal.SetActive(false);
         }
 
@@ -925,6 +950,7 @@ namespace ProjectorUtility.Controller
         {
             ResetGlobalMaskEditMode();
             _globalMaskSettingEntity.Load();
+            if (OnDiscardAndCloseGlobalMaskMode != null) OnDiscardAndCloseGlobalMaskMode();
             _globalMaskMode.modal.SetActive(false);
         }
 
@@ -934,6 +960,7 @@ namespace ProjectorUtility.Controller
         public void SaveAndCloseRectMaskMode()
         {
             _rectMaskSettingEntity.Save();
+            if (OnSaveAndCloseRectMaskMode != null) OnSaveAndCloseRectMaskMode();
             _rectMaskMode.modal.SetActive(false);
         }
 
@@ -943,6 +970,7 @@ namespace ProjectorUtility.Controller
         public void DiscardAndCloseRectMaskMode()
         {
             _rectMaskSettingEntity.Load();
+            if (OnDiscardAndCloseRectMaskMode != null) OnDiscardAndCloseRectMaskMode();
             _rectMaskMode.modal.SetActive(false);
         }
 
@@ -1083,8 +1111,18 @@ namespace ProjectorUtility.Controller
                     }
                     if (_keyViewModalSets.Any(set => set.modal.activeSelf)) break;
                     _keyViewModalSets[i].modal.SetActive(true);
-                    if (_keyViewModalSets[i].key == _simpleMode.key) ConvertAdvanceEntityToFitSimpleView();
-                    if (_keyViewModalSets[i].key == _globalMaskMode.key) ResetGlobalMaskEditMode();
+                    if (_keyViewModalSets[i].key == _simpleMode.key)
+                    {
+                        ConvertAdvanceEntityToFitSimpleView();
+                        if (OnShowSimpleMode != null) OnShowSimpleMode();
+                    }
+                    if (_keyViewModalSets[i].key == _globalMaskMode.key)
+                    {
+                        ResetGlobalMaskEditMode();
+                        if (OnShowGlobalMaskMode != null) OnShowGlobalMaskMode();
+                    }
+                    if (_keyViewModalSets[i].key == _advancedMode.key) if (OnShowAdvancedMode != null) OnShowAdvancedMode();
+                    if (_keyViewModalSets[i].key == _rectMaskMode.key) if (OnShowRectMaskMode != null) OnShowRectMaskMode();
                 }
             }
         }
