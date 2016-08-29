@@ -264,48 +264,111 @@ namespace ProjectorUtility.Controller
             {
                 float upperBlends = 0f, lowerBlends = 0f, leftBlends = 0f, rightBlends = 0f;
 
-                if (leftOverlapCount > 0)
+                // if column is even
+                if (_colScreens > 1 && _colScreens % 2 == 0)
                 {
-                    for (int i = 0; i < leftOverlapCount; i++)
+                    for (int i = 0 + _colScreens * currentRow; i < _colScreens / 2 + _colScreens * currentRow; i++)
                     {
-                        if (_colScreens % 2 != 0 || _colScreens / 2 != currentCol + 1 + i)
-                        {
-                            leftBlends += _screenSettingEntities[screenID + i + 1].LeftBlend.Value;
-                        }
-                        leftBlends += _screenSettingEntities[screenID + i].RightBlend.Value;
+                        if (i == 0 + _colScreens * currentRow)
+                            leftBlends += _screenSettingEntities[i].RightBlend.Value;
+                        else
+                            leftBlends += _screenSettingEntities[i].LeftBlend.Value + _screenSettingEntities[i].RightBlend.Value;
+                    }
+                    for (int i = _colScreens - 1 + _colScreens * currentRow; i >= _colScreens / 2 + _colScreens * currentRow; i--)
+                    {
+                        if (i == _colScreens - 1 + _colScreens * currentRow)
+                            rightBlends += _screenSettingEntities[i].LeftBlend.Value;
+                        else
+                            rightBlends += _screenSettingEntities[i].RightBlend.Value + _screenSettingEntities[i].LeftBlend.Value;
                     }
                 }
-                if (rightOverlapCount > 0)
+
+                // if column is odd
+                if (_colScreens > 1 && _colScreens % 2 != 0)
                 {
-                    for (int i = 0; i < rightOverlapCount; i++)
+                    for (int i = 0 + _colScreens * currentRow; i < Mathf.CeilToInt(_colScreens / 2f) + _colScreens * currentRow; i++)
                     {
-                        if (_colScreens % 2 != 0 || _colScreens / 2 != _colScreens - currentCol + i)
-                        {
-                            rightBlends += _screenSettingEntities[screenID - i - 1].RightBlend.Value;
-                        }
-                        rightBlends += _screenSettingEntities[screenID - i].LeftBlend.Value;
+                        if (i == 0 + _colScreens * currentRow)
+                            leftBlends += _screenSettingEntities[i].RightBlend.Value;
+                        else if (i == Mathf.FloorToInt(_colScreens / 2) + _colScreens * currentRow)
+                            leftBlends += _screenSettingEntities[i].LeftBlend.Value;
+                        else
+                            leftBlends += _screenSettingEntities[i].LeftBlend.Value + _screenSettingEntities[i].RightBlend.Value;
+                    }
+                    for (int i = _colScreens - 1 + _colScreens * currentRow; i >= Mathf.FloorToInt(_colScreens / 2f) + _colScreens * currentRow; i--)
+                    {
+                        if (i == _colScreens - 1 + _colScreens * currentRow)
+                            rightBlends += _screenSettingEntities[i].LeftBlend.Value;
+                        else if (i == Mathf.FloorToInt(_colScreens / 2) + _colScreens * currentRow)
+                            rightBlends += _screenSettingEntities[i].RightBlend.Value;
+                        else
+                            rightBlends += _screenSettingEntities[i].RightBlend.Value + _screenSettingEntities[i].LeftBlend.Value;
                     }
                 }
-                if (upperOverlapCount > 0)
+
+                // if row is even
+                if (_rowScreens > 1 && _rowScreens % 2 == 0)
                 {
-                    for (int i = 0; i < upperOverlapCount; i++)
+                    for (int i = currentCol; i < _rowScreens / 2 * _colScreens + currentCol; )
                     {
-                        if (_rowScreens % 2 != 0 || _rowScreens / 2 != currentRow + 1 + i)
+                        if (i == currentCol)
                         {
-                            upperBlends += _screenSettingEntities[screenID + (i + 1) * _colScreens].TopBlend.Value;
+                            upperBlends += _screenSettingEntities[i].BottomBlend.Value;
                         }
-                        upperBlends += _screenSettingEntities[screenID + i * _colScreens].BottomBlend.Value;
+                        else
+                        {
+                            upperBlends += _screenSettingEntities[i].TopBlend.Value + _screenSettingEntities[i].BottomBlend.Value;
+                        }
+                        i += _colScreens;
+                    }
+                    for (int i = currentCol + (_rowScreens - 1) * _colScreens; i >= _rowScreens / 2 + currentCol; )
+                    {
+                        if (i == currentCol + (_rowScreens - 1) * _colScreens)
+                        {
+                            lowerBlends += _screenSettingEntities[i].TopBlend.Value;
+                        }
+                        else
+                        {
+                            lowerBlends += _screenSettingEntities[i].BottomBlend.Value + _screenSettingEntities[i].TopBlend.Value;
+                        }
+                        i -= _colScreens;
                     }
                 }
-                if (lowerOverlapCount > 0)
+
+                // if row is odd
+                if (_rowScreens > 1 && _rowScreens % 2 != 0)
                 {
-                    for (int i = 0; i < lowerOverlapCount; i++)
+                    for (int i = currentCol; i < Mathf.CeilToInt(_rowScreens / 2f) * _colScreens + currentCol; )
                     {
-                        if (_rowScreens % 2 != 0 || _rowScreens / 2 != _rowScreens - currentRow + i)
+                        if (i == currentCol)
                         {
-                            lowerBlends += _screenSettingEntities[screenID - (i + 1) * _colScreens].BottomBlend.Value;
+                            upperBlends += _screenSettingEntities[i].BottomBlend.Value;
                         }
-                        lowerBlends += _screenSettingEntities[screenID - i * _colScreens].TopBlend.Value;
+                        else if (i == Mathf.FloorToInt(_rowScreens / 2f) * _colScreens + currentCol)
+                        {
+                            upperBlends += _screenSettingEntities[i].TopBlend.Value;
+                        }
+                        else
+                        {
+                            upperBlends += _screenSettingEntities[i].BottomBlend.Value + _screenSettingEntities[i].TopBlend.Value;
+                        }
+                        i += _colScreens;
+                    }
+                    for (int i = currentCol + (_rowScreens - 1) * _colScreens; i >= Mathf.FloorToInt(_rowScreens / 2f) * _colScreens + currentCol; )
+                    {
+                        if (i == currentCol + (_rowScreens - 1) * _colScreens)
+                        {
+                            lowerBlends += _screenSettingEntities[i].TopBlend.Value;
+                        }
+                        else if (i == Mathf.FloorToInt(_rowScreens / 2f) * _colScreens + currentCol)
+                        {
+                            lowerBlends += _screenSettingEntities[i].BottomBlend.Value;
+                        }
+                        else
+                        {
+                            lowerBlends += _screenSettingEntities[i].TopBlend.Value + _screenSettingEntities[i].BottomBlend.Value;
+                        }
+                        i -= _colScreens;
                     }
                 }
 

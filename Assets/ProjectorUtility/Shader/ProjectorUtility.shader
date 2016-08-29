@@ -87,10 +87,13 @@
         //// overlap color tuning region. ////
         //blackness.
         col = saturate(1.0 - (1.0 - col) * _blackness);
-        //blend curve.
+        //edge blending gamma curve.
         col = pow(col, 1 / _power);
         //blending area brightness.
-        col = lerp(col, col * _brightness, (col < 1.0));
+        col = lerp(_brightness * 0.5 * (2.0 * col), 1.0 - (1.0 - _brightness * 0.5) * 2.0 * (1.0 - col), max(0, sign(col - 0.5)));
+
+        //high and low two curve blend (for field test.)
+        //col = lerp(_brightness * pow(2.0 * col, 1.0 / _power), 1.0 - (1.0 - _brightness) * pow(2.0 * (1.0 - col), 1.0 / _power), max(0, sign(col - 0.5)));
 
         //// mask region. ////
         fixed topMask = step(vrtclLen * rowID + buf[SID].maskTop, coord.y);
