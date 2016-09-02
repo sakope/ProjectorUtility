@@ -30,8 +30,6 @@ namespace XmlStorage.Examples {
         }
 
         private void SetData2XmlStorage(int value) {
-            Debug.Log(value);
-            Debug.Log(this.qua.x);
             XmlStorage.SetInt("integer", value);
             XmlStorage.SetFloat("float", 1.111f);
             XmlStorage.Set("TestClass", this.test);
@@ -43,6 +41,9 @@ namespace XmlStorage.Examples {
             XmlStorage.SetInt("del_tes2", 5);
             XmlStorage.SetString("del_tes2", "del_tes2");
             XmlStorage.DeleteKey("del_tes2", typeof(int));
+
+            var address = "lab-interactive@team-lab.com";
+            XmlStorage.SetString("address", address);
 
             XmlStorage.Set("vec2", this.vec2);
             XmlStorage.Set("vec3", this.vec3);

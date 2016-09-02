@@ -3,6 +3,7 @@ using UnityEngine.SceneManagement;
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Xml;
 using System.Xml.Serialization;
 using System.IO;
 using System.Text;
@@ -33,6 +34,7 @@ namespace XmlStorage.Components {
             get { return this.DirectoryPath + Path.DirectorySeparatorChar + this.FileName; }
         }
         public string AggregationName { get; private set; }
+        public bool IsAllTypesSerialize { get; private set; }
 
         private string fileName = "XmlStorage.xml";
         private string extension = ".xml";
@@ -40,11 +42,10 @@ namespace XmlStorage.Components {
         private ExDictionary dictionary = new ExDictionary();
 
 
-        public Aggregation(List<DataElement> elements, string aggregationName) {
-            if(elements != null) {
-                this.Set2DictionaryByList(elements);
-            }
+        public Aggregation(List<DataElement> elements, string aggregationName, bool isAllTypesSerialize = false) {
+            this.IsAllTypesSerialize = isAllTypesSerialize;
 
+            if(elements != null) { this.Set2DictionaryByList(elements); }
             this.AggregationName = (string.IsNullOrEmpty(aggregationName) ? Guid.NewGuid().ToString() : aggregationName);
 
             this.Extension = ".xml";
@@ -89,22 +90,58 @@ namespace XmlStorage.Components {
 
         public void Add2DictionaryByList(List<DataElement> list) {
             list.ForEach(e => {
-                if(!this.dictionary.ContainsKey(e.ValueType)) { this.dictionary[e.ValueType] = new Dictionary<string, object>(); }
+                var vt = e.ValueType;
 
-                this.dictionary[e.ValueType][e.Key] = e.Value;
+                if(!this.dictionary.ContainsKey(vt)) { this.dictionary[vt] = new Dictionary<string, object>(); }
+
+                if(this.IsAllTypesSerialize || !vt.IsSerializable) {
+                    this.dictionary[vt][e.Key] = this.Deserialize(e.Value, vt);
+                }
+                else {
+                    this.dictionary[vt][e.Key] = e.Value;
+                }
             });
         }
 
-        public List<DataElement> GetDataAsList() {
+        public List<DataElement> GetDataAsList(Encoding encode = null) {
             var list = new List<DataElement>();
-
+            
             foreach(var pair in this.dictionary) {
                 foreach(var e in pair.Value) {
-                    list.Add(new DataElement(e.Key, e.Value, pair.Key));
+                    if(this.IsAllTypesSerialize) {
+                        list.Add(this.Object2DataElement(e.Value, e.Key, pair.Key, true, encode));
+                    }
+                    else {
+                        list.Add(this.Object2DataElement(e.Value, e.Key, pair.Key, !e.Value.GetType().IsSerializable, encode));
+                    }
                 }
             }
 
             return list;
+        }
+
+        private DataElement Object2DataElement(object value, string key, Type type, bool serialize = false, Encoding encode = null) {
+            if(serialize) {
+                var serializer = new XmlSerializer(type);
+
+                using(var sw = new StringWriterEncode(encode)) {
+                    serializer.Serialize(sw, value);
+
+                    return new DataElement(key, sw.ToString(), type);
+                }
+            }
+
+            return new DataElement(key, value, type);
+        }
+
+        private object Deserialize(object value, Type type) { return this.Deserialize(value.ToString(), type); }
+
+        private object Deserialize(string value, Type type) {
+            var serializer = new XmlSerializer(type);
+
+            using(var sr = new StringReader(value)) {
+                return serializer.Deserialize(sr);
+            }
         }
     }
 }
