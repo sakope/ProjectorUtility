@@ -15,7 +15,6 @@
         public ReactiveProperty<float> Curve { get; private set; }
         public ReactiveProperty<float> Brightness { get; private set; }
         public ReactiveProperty<bool>  Symmetry { get; private set; }
-        public ReactiveProperty<bool>  LerpedInputMode { get; private set; }
 
         string _numOfColProjectorsProp = "numOfColProjectors";
         string _numOfRowProjectorsProp = "numOfRowProjectors";
@@ -23,7 +22,6 @@
         string _curveProp              = "curve";
         string _brightnessProp         = "brightness";
         string _symmetry               = "symmetry";
-        string _lerpedInputModeProp    = "sensorMode";
 
         public const float GAMMA_CURVE = 2.2f;
 
@@ -51,7 +49,6 @@
             Curve              = new ReactiveProperty<float>(XmlStorage.Get<float>(_curveProp, GAMMA_CURVE));
             Brightness         = new ReactiveProperty<float>(XmlStorage.Get<float>(_brightnessProp, 1.0f));
             Symmetry           = new ReactiveProperty<bool>(XmlStorage.Get<bool>(_symmetry, true));
-            LerpedInputMode    = new ReactiveProperty<bool>(XmlStorage.Get<bool>(_lerpedInputModeProp, true));
 
             XmlStorage.ChangeAggregation(currentAggregationKey);
         }
@@ -70,7 +67,6 @@
             Curve.Value              = XmlStorage.Get<float>(_curveProp, GAMMA_CURVE);
             Brightness.Value         = XmlStorage.Get<float>(_brightnessProp, 1.0f);
             Symmetry.Value           = XmlStorage.Get<bool>(_symmetry, true);
-            LerpedInputMode.Value    = XmlStorage.Get<bool>(_lerpedInputModeProp, false);
 
             XmlStorage.ChangeAggregation(currentAggregationKey);
         }
@@ -90,7 +86,6 @@
             XmlStorage.Set<float>(_curveProp, Curve.Value);
             XmlStorage.Set<float>(_brightnessProp, Brightness.Value);
             XmlStorage.Set<bool>(_symmetry, Symmetry.Value);
-            XmlStorage.Set<bool>(_lerpedInputModeProp, LerpedInputMode.Value);
             XmlStorage.Save();
 
             XmlStorage.ChangeAggregation(currentAggregationKey);
