@@ -76,9 +76,9 @@
         /// </summary>
         public void Save()
         {
-            XmlStorage.FileName = XMLAggregationKey;
             var currentAggregationKey = XmlStorage.CurrentAggregationName;
             XmlStorage.ChangeAggregation(XMLAggregationKey);
+            XmlStorage.FileName = XMLAggregationKey;
 
             XmlStorage.Set<int>(_numOfColProjectorsProp, NumOfColProjectors.Value);
             XmlStorage.Set<int>(_numOfRowProjectorsProp, NumOfRowProjectors.Value);

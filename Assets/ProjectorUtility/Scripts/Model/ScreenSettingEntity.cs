@@ -112,9 +112,9 @@ namespace ProjectorUtility.Model
         /// </summary>
         public void Save()
         {
-            XmlStorage.FileName = CommonSettingEntity.XMLAggregationKey;
             var currentAggregationKey = XmlStorage.CurrentAggregationName;
             XmlStorage.ChangeAggregation(CommonSettingEntity.XMLAggregationKey);
+            XmlStorage.FileName = CommonSettingEntity.XMLAggregationKey;
 
             XmlStorage.Set<float>(_topBlendProp, TopBlend.Value);
             XmlStorage.Set<float>(_bottomBlendProp, BottomBlend.Value);

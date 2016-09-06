@@ -77,9 +77,9 @@
         /// </summary>
         public void Save()
         {
-            XmlStorage.FileName = CommonSettingEntity.XMLAggregationKey;
             var currentAggregationKey = XmlStorage.CurrentAggregationName;
             XmlStorage.ChangeAggregation(CommonSettingEntity.XMLAggregationKey);
+            XmlStorage.FileName = CommonSettingEntity.XMLAggregationKey;
 
             for (int i = 0; i < MAX_RECTMASKS; i++)
             {
