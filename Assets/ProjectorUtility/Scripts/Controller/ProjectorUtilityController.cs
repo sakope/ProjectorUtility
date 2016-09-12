@@ -96,11 +96,30 @@ namespace ProjectorUtility.Controller
         public RectMaskSettingEntity GetRectMaskSettingEntity { get { return _rectMaskSettingEntity; } }
         public List<ScreenSettingEntity> GetScreenSettingEntities { get { return _screenSettingEntities; } }
 
+        /// <summary> Minimum upper blending heigh (viewport). </summary>
         public float NormalizedMinUpperBlendHeight { get; private set; }
+        /// <summary> Minimum lower blending heigh (viewport). </summary>
         public float NormalizedMinLowerBlendHeight { get; private set; }
+        /// <summary> Minimum left blending heigh (viewport). </summary>
         public float NormalizedMinLeftBlendWidth   { get; private set; }
+        /// <summary> Minimum right blending heigh (viewport). </summary>
         public float NormalizedMinRightBlendWidth  { get; private set; }
-        
+        /// <summary> Minimum upper blending heigh (screen coord). </summary>
+        public float MinUpperBlendHeight { get { return NormalizedMinUpperBlendHeight * Screen.height; } }
+        /// <summary> Minimum lower blending heigh (screen coord). </summary>
+        public float MinLowerBlendHeight { get { return NormalizedMinLowerBlendHeight * Screen.height; } }
+        /// <summary> Minimum left blending heigh (screen coord). </summary>
+        public float MinLeftBlendWidth   { get { return NormalizedMinLeftBlendWidth * Screen.width; } }
+        /// <summary> Minimum right blending heigh (screen coord). </summary>
+        public float MinRightBlendWidth  { get { return NormalizedMinRightBlendWidth * Screen.width; } }
+        /// <summary> Gloabl top mask value (viewport). </summary>
+        public float NormalizedGlobalTopMaskValue { get { return _globalMaskSettingEntity.TopMask.Value * 0.5f / Screen.height; } }
+        /// <summary> Gloabl bottom mask value (viewport). </summary>
+        public float NormalizedGlobalBottomMaskValue { get { return _globalMaskSettingEntity.BottomMask.Value * 0.5f / Screen.height; } }
+        /// <summary> Gloabl left mask value (viewport). </summary>
+        public float NormalizedGlobalLeftMaskValue { get { return _globalMaskSettingEntity.LeftMask.Value * 0.5f / Screen.width; } }
+        /// <summary> Gloabl right mask value (viewport). </summary>
+        public float NormalizedGlobalRightMaskValue { get { return _globalMaskSettingEntity.RightMask.Value * 0.5f / Screen.width; } }
         /// <summary> Gloabl top mask value (screen size). </summary>
         public float GlobalTopMaskValue { get { return _globalMaskSettingEntity.TopMask.Value * 0.5f; } }
         /// <summary> Gloabl bottom mask value (screen size). </summary>
@@ -129,6 +148,8 @@ namespace ProjectorUtility.Controller
         public event Action OnShowGlobalMaskMode;
         public event Action OnSaveAndCloseGlobalMaskMode;
         public event Action OnDiscardAndCloseGlobalMaskMode;
+
+        public event Action OnBlendingUpdate;
 
         #endregion
 
@@ -193,42 +214,6 @@ namespace ProjectorUtility.Controller
             return NormalizedBlendWidth(row) * Screen.width;
         }
         
-        /// <summary>
-        /// Narrowest upper blend height in screen space coord.
-        /// </summary>
-        /// <returns>Narrowest upper blend height</returns>
-        public float MinUpperBlendHeight()
-        {
-            return NormalizedMinUpperBlendHeight * Screen.height;
-        }
-
-        /// <summary>
-        /// Narrowest lower blend height in screen space coord.
-        /// </summary>
-        /// <returns>Narrowest lower blend height</returns>
-        public float MinLowerBlendHeight()
-        {
-            return NormalizedMinLowerBlendHeight * Screen.height;
-        }
-
-        /// <summary>
-        /// Narrowest left blend width in screen space coord.
-        /// </summary>
-        /// <returns>Narrowest left blend width</returns>
-        public float MinLeftBlendWidth()
-        {
-            return NormalizedMinLeftBlendWidth * Screen.width;
-        }
-
-        /// <summary>
-        /// Narrowest right blend width in screen space coord.
-        /// </summary>
-        /// <returns>Narrowest right blend width</returns>
-        public float MinRightBlendWidth()
-        {
-            return NormalizedMinRightBlendWidth * Screen.width;
-        }
-
         /// <summary>
         /// Return adjusted viewport position for blend and uv shift.
         /// If lerped sensor mode is true, return lerped adjusted value for each col, row and uv shift.
@@ -376,6 +361,7 @@ namespace ProjectorUtility.Controller
             return adjustPosition;
         }
 
+
         #endregion
 
 
@@ -386,6 +372,11 @@ namespace ProjectorUtility.Controller
             base.Awake();
             _mat = new Material(_shader);
             _camera = GetComponent<Camera>();
+
+            NormalizedMinUpperBlendHeight = 0f;
+            NormalizedMinLowerBlendHeight = 0f;
+            NormalizedMinLeftBlendWidth   = 0f;
+            NormalizedMinRightBlendWidth  = 0f;
 
             _keyViewModalSets.Add(_simpleMode);
             _keyViewModalSets.Add(_advancedMode);
@@ -405,11 +396,6 @@ namespace ProjectorUtility.Controller
             BuildScreenSetting();
             BuildSimpleSetting();
             SetTabSystem();
-
-            NormalizedMinUpperBlendHeight = 0f;
-            NormalizedMinLowerBlendHeight = 0f;
-            NormalizedMinLeftBlendWidth   = 0f;
-            NormalizedMinRightBlendWidth  = 0f;
         }
 
         #endregion
@@ -661,28 +647,184 @@ namespace ProjectorUtility.Controller
 
         void CalculateNarrowestBlend()
         {
-            NormalizedMinLeftBlendWidth = NormalizedMinRightBlendWidth = NormalizedMinUpperBlendHeight = NormalizedMinLowerBlendHeight = 1;
-
-            if (NumOfScreen != _colScreens * _rowScreens) return;
-            if (_screenSettingEntities.Count != NumOfScreen) return;
-
-            for (int i = 0; i < NumOfScreen; i++)
+            if(NumOfScreen == 1)
             {
-                if (i % _colScreens == 0)
+                return;
+            }
+
+            // if column is even
+            if (_colScreens > 1 && _colScreens % 2 == 0)
+            {
+                for (int i = 0; i < _rowScreens; i++)
                 {
-                    if (NormalizedMinLeftBlendWidth >= _screenSettingEntities[i].LeftBlend.Value) NormalizedMinLeftBlendWidth = _screenSettingEntities[i].LeftBlend.Value;
+                    var leftBlend  = 0f;
+                    var rightBlend = 0f;
+
+                    for (int j = 0 + _colScreens * i; j < _colScreens / 2 + _colScreens * i; j++)
+                    {
+                        if (j == 0 + _colScreens * j)
+                            leftBlend += _screenSettingEntities[j].RightBlend.Value;
+                        else
+                            leftBlend += _screenSettingEntities[j].LeftBlend.Value + _screenSettingEntities[j].RightBlend.Value;
+                    }
+                    for (int k = _colScreens - 1 + _colScreens * i; k >= _colScreens / 2 + _colScreens * i; k--)
+                    {
+                        if (k == _colScreens - 1 + _colScreens * i)
+                            rightBlend += _screenSettingEntities[k].LeftBlend.Value;
+                        else
+                            rightBlend += _screenSettingEntities[k].RightBlend.Value + _screenSettingEntities[k].LeftBlend.Value;
+                    }
+
+                    if (i == 0)
+                    {
+                        NormalizedMinLeftBlendWidth  = leftBlend;
+                        NormalizedMinRightBlendWidth = rightBlend;
+                    }
+                    else
+                    {
+                        if (leftBlend < NormalizedMinLeftBlendWidth) NormalizedMinLeftBlendWidth = leftBlend;
+                        if (rightBlend < NormalizedMinRightBlendWidth) NormalizedMinRightBlendWidth = rightBlend;
+                    }
                 }
-                if ((i + 1) % _colScreens == 0)
+            }
+
+            // if column is odd
+            if (_colScreens > 1 && _colScreens % 2 != 0)
+            {
+                for (int i = 0; i < _rowScreens; i++)
                 {
-                    if (NormalizedMinRightBlendWidth >= _screenSettingEntities[i].RightBlend.Value) NormalizedMinRightBlendWidth = _screenSettingEntities[i].RightBlend.Value;
+                    var leftBlend = 0f;
+                    var rightBlend = 0f;
+
+                    for (int j = 0 + _colScreens * i; j < Mathf.CeilToInt(_colScreens / 2f) + _colScreens * i; j++)
+                    {
+                        if (j == 0 + _colScreens * i)
+                            leftBlend += _screenSettingEntities[j].RightBlend.Value;
+                        else if (j == Mathf.FloorToInt(_colScreens / 2) + _colScreens * i)
+                            leftBlend += _screenSettingEntities[j].LeftBlend.Value;
+                        else
+                            leftBlend += _screenSettingEntities[j].LeftBlend.Value + _screenSettingEntities[j].RightBlend.Value;
+                    }
+                    for (int k = _colScreens - 1 + _colScreens * i; k >= Mathf.FloorToInt(_colScreens / 2f) + _colScreens * i; k--)
+                    {
+                        if (k == _colScreens - 1 + _colScreens * i)
+                            rightBlend += _screenSettingEntities[k].LeftBlend.Value;
+                        else if (k == Mathf.FloorToInt(_colScreens / 2) + _colScreens * i)
+                            rightBlend += _screenSettingEntities[k].RightBlend.Value;
+                        else
+                            rightBlend += _screenSettingEntities[k].RightBlend.Value + _screenSettingEntities[k].LeftBlend.Value;
+                    }
+
+                    if (i == 0)
+                    {
+                        NormalizedMinLeftBlendWidth  = leftBlend;
+                        NormalizedMinRightBlendWidth = rightBlend;
+                    }
+                    else
+                    {
+                        if (leftBlend < NormalizedMinLeftBlendWidth) NormalizedMinLeftBlendWidth = leftBlend;
+                        if (rightBlend < NormalizedMinRightBlendWidth) NormalizedMinRightBlendWidth = rightBlend;
+                    }
                 }
-                if (i < _colScreens)
+            }
+
+            // if row is even
+            if (_rowScreens > 1 && _rowScreens % 2 == 0)
+            {
+                for (int i = 0; i < _colScreens; i++)
                 {
-                    if (NormalizedMinUpperBlendHeight >= _screenSettingEntities[i].TopBlend.Value) NormalizedMinUpperBlendHeight = _screenSettingEntities[i].TopBlend.Value;
+                    var upperBlend = 0f;
+                    var lowerBlend = 0f;
+
+                    for (int j = i; j < _rowScreens / 2 * _colScreens + i;)
+                    {
+                        if (j == i)
+                        {
+                            upperBlend += _screenSettingEntities[j].BottomBlend.Value;
+                        }
+                        else
+                        {
+                            upperBlend += _screenSettingEntities[j].TopBlend.Value + _screenSettingEntities[j].BottomBlend.Value;
+                        }
+                        j += _colScreens;
+                    }
+                    for (int k = i + (_rowScreens - 1) * _colScreens; k >= _rowScreens / 2 + i;)
+                    {
+                        if (k == i + (_rowScreens - 1) * _colScreens)
+                        {
+                            lowerBlend += _screenSettingEntities[k].TopBlend.Value;
+                        }
+                        else
+                        {
+                            lowerBlend += _screenSettingEntities[k].BottomBlend.Value + _screenSettingEntities[k].TopBlend.Value;
+                        }
+                        k -= _colScreens;
+                    }
+
+                    if (i == 0)
+                    {
+                        NormalizedMinUpperBlendHeight = upperBlend;
+                        NormalizedMinLowerBlendHeight = lowerBlend;
+                    }
+                    else
+                    {
+                        if (upperBlend < NormalizedMinUpperBlendHeight) NormalizedMinUpperBlendHeight = upperBlend;
+                        if (lowerBlend < NormalizedMinLowerBlendHeight) NormalizedMinLowerBlendHeight = lowerBlend;
+                    }
                 }
-                if (i >= NumOfScreen - _colScreens)
+            }
+
+            // if row is odd
+            if (_rowScreens > 1 && _rowScreens % 2 != 0)
+            {
+                for (int i = 0; i < _colScreens; i++)
                 {
-                    if (NormalizedMinLowerBlendHeight >= _screenSettingEntities[i].BottomBlend.Value) NormalizedMinLowerBlendHeight = _screenSettingEntities[i].BottomBlend.Value;
+                    var upperBlend = 0f;
+                    var lowerBlend = 0f;
+
+                    for (int j = i; j < Mathf.CeilToInt(_rowScreens / 2f) * _colScreens + i;)
+                    {
+                        if (j == i)
+                        {
+                            upperBlend += _screenSettingEntities[j].BottomBlend.Value;
+                        }
+                        else if (j == Mathf.FloorToInt(_rowScreens / 2f) * _colScreens + i)
+                        {
+                            upperBlend += _screenSettingEntities[j].TopBlend.Value;
+                        }
+                        else
+                        {
+                            upperBlend += _screenSettingEntities[j].BottomBlend.Value + _screenSettingEntities[j].TopBlend.Value;
+                        }
+                        j += _colScreens;
+                    }
+                    for (int k = i + (_rowScreens - 1) * _colScreens; k >= Mathf.FloorToInt(_rowScreens / 2f) * _colScreens + i;)
+                    {
+                        if (k == i + (_rowScreens - 1) * _colScreens)
+                        {
+                            lowerBlend += _screenSettingEntities[k].TopBlend.Value;
+                        }
+                        else if (k == Mathf.FloorToInt(_rowScreens / 2f) * _colScreens + i)
+                        {
+                            lowerBlend += _screenSettingEntities[k].BottomBlend.Value;
+                        }
+                        else
+                        {
+                            lowerBlend += _screenSettingEntities[k].TopBlend.Value + _screenSettingEntities[k].BottomBlend.Value;
+                        }
+                        k -= _colScreens;
+                    }
+
+                    if (i == 0)
+                    {
+                        NormalizedMinUpperBlendHeight = upperBlend;
+                        NormalizedMinLowerBlendHeight = lowerBlend;
+                    }
+                    else
+                    {
+                        if (upperBlend < NormalizedMinUpperBlendHeight) NormalizedMinUpperBlendHeight = upperBlend;
+                        if (lowerBlend < NormalizedMinLowerBlendHeight) NormalizedMinLowerBlendHeight = lowerBlend;
+                    }
                 }
             }
         }
@@ -733,6 +875,8 @@ namespace ProjectorUtility.Controller
             _mat.SetFloat("_brightness", _commonSettingEntity.Brightness.Value);
 
             CalculateNarrowestBlend();
+
+            if (OnBlendingUpdate != null) OnBlendingUpdate();
         }
         
         /// <summary>
@@ -875,6 +1019,7 @@ namespace ProjectorUtility.Controller
                     if (_globalMaskSettingEntity.LeftMask.Value < 0) _globalMaskSettingEntity.LeftMask.Value = 0f;
                 }
             }
+            if (OnBlendingUpdate != null) OnBlendingUpdate();
         }   
 
         /// <summary>
@@ -946,6 +1091,7 @@ namespace ProjectorUtility.Controller
             ResetGlobalMaskEditMode();
             _globalMaskSettingEntity.Save();
             if (OnSaveAndCloseGlobalMaskMode != null) OnSaveAndCloseGlobalMaskMode();
+            if (OnBlendingUpdate != null) OnBlendingUpdate();
             _globalMaskMode.modal.SetActive(false);
         }
 
@@ -957,6 +1103,7 @@ namespace ProjectorUtility.Controller
             ResetGlobalMaskEditMode();
             _globalMaskSettingEntity.Load();
             if (OnDiscardAndCloseGlobalMaskMode != null) OnDiscardAndCloseGlobalMaskMode();
+            if (OnBlendingUpdate != null) OnBlendingUpdate();
             _globalMaskMode.modal.SetActive(false);
         }
 
