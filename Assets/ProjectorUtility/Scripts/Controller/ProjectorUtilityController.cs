@@ -69,6 +69,7 @@ namespace ProjectorUtility.Controller
         [SerializeField] KeyViewModalSet       _advancedMode;
         [SerializeField] KeyViewModalSet       _globalMaskMode;
         [SerializeField] KeyViewModalSet       _rectMaskMode;
+        [SerializeField] bool                  _useGammaBlend;
 
         CommonSettingEntity       _commonSettingEntity;
         CommonSettingView         _commonSettingView;
@@ -396,6 +397,8 @@ namespace ProjectorUtility.Controller
             BuildScreenSetting();
             BuildSimpleSetting();
             SetTabSystem();
+
+            if (_useGammaBlend) _mat.EnableKeyword("GAMMA");
         }
 
         #endregion
